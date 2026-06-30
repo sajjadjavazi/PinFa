@@ -1,0 +1,773 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * =========================
+ * ENUMS
+ * =========================
+ */
+
+enum UserRole {
+  USER
+  TRUSTED_USER
+  MODERATOR
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum PinStatus {
+  DRAFT
+  PROCESSING
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  REMOVED
+  DELETED
+}
+
+enum ImageStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+  DELETED
+}
+
+enum BoardVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum CategoryStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum Likelihood {
+  UNKNOWN
+  VERY_UNLIKELY
+  UNLIKELY
+  POSSIBLE
+  LIKELY
+  VERY_LIKELY
+}
+
+enum ModerationDecision {
+  AUTO_APPROVED
+  AUTO_REJECTED
+  HUMAN_REVIEW_REQUIRED
+  MANUALLY_APPROVED
+  MANUALLY_REJECTED
+  REMOVED
+}
+
+enum ReportTargetType {
+  PIN
+  USER
+  BOARD
+}
+
+enum ReportReason {
+  ADULT_CONTENT
+  NUDITY
+  SEXUAL_CONTENT
+  RACY_CONTENT
+  VIOLENCE
+  MEDICAL_SENSITIVE
+  SPAM
+  HARASSMENT
+  ILLEGAL_CONTENT
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum UserEventType {
+  VIEW_PIN
+  OPEN_PIN
+  LIKE_PIN
+  UNLIKE_PIN
+  SAVE_PIN
+  UNSAVE_PIN
+  CREATE_BOARD
+  FOLLOW_USER
+  UNFOLLOW_USER
+  FOLLOW_BOARD
+  UNFOLLOW_BOARD
+  FOLLOW_CATEGORY
+  UNFOLLOW_CATEGORY
+  SEARCH
+  SHARE_PIN
+  REPORT_PIN
+  HIDE_PIN
+  NOT_INTERESTED
+  CLICK_AD
+}
+
+enum UserInterestSource {
+  ONBOARDING
+  VIEW
+  LIKE
+  SAVE
+  FOLLOW
+  SEARCH
+  ADMIN_SEED
+  SYSTEM
+}
+
+enum NotificationType {
+  USER_FOLLOWED_YOU
+  PIN_LIKED
+  PIN_SAVED
+  PIN_APPROVED
+  PIN_REJECTED
+  REPORT_RESOLVED
+  ADMIN_WARNING
+  SYSTEM
+}
+
+enum AdProvider {
+  YEKTANET
+  INTERNAL
+  DIRECT
+  AFFILIATE
+}
+
+enum AdPlacement {
+  HOME_FEED_INLINE
+  PIN_DETAIL_RELATED
+  SEARCH_INLINE
+  CATEGORY_FEED_INLINE
+}
+
+enum AdEventType {
+  AD_SLOT_REQUESTED
+  AD_SLOT_RENDERED
+  AD_IMPRESSION_ATTEMPTED
+  AD_CLICKED
+  AD_FAILED
+}
+
+enum AuditAction {
+  PIN_APPROVED
+  PIN_REJECTED
+  PIN_REMOVED
+  PIN_RESTORED
+  USER_SUSPENDED
+  USER_BANNED
+  USER_RESTORED
+  REPORT_RESOLVED
+  CATEGORY_CREATED
+  CATEGORY_UPDATED
+  CATEGORY_DISABLED
+  MODERATION_SETTING_UPDATED
+  AD_SETTING_UPDATED
+  ADMIN_LOGIN
+  SYSTEM_CHANGE
+}
+
+enum VerificationChannel {
+  EMAIL
+  PHONE
+}
+
+/**
+ * =========================
+ * USER & AUTH
+ * =========================
+ */
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  displayName  String
+  email        String?    @unique
+  phone        String?    @unique
+  passwordHash String
+  avatarUrl    String?
+  bio          String?
+  websiteUrl   String?
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+  trustScore   Int        @default(0)
+
+  termsAcceptedAt DateTime?
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+
+  followerCount  Int @default(0)
+  followingCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions                  UserSession[]
+  passwordResetTokens       PasswordResetToken[]
+  accountVerificationTokens AccountVerificationToken[]
+
+  uploadedPins Pin[]        @relation("UserPins")
+  imageAssets  ImageAsset[]
+  boards       Board[]      @relation("UserBoards")
+
+  likes     Like[]
+  boardPins BoardPin[] @relation("SavedByUser")
+
+  followingUsers UserFollow[] @relation("UserFollowFollower")
+  followers      UserFollow[] @relation("UserFollowTarget")
+
+  followedBoards     BoardFollow[]
+  followedCategories CategoryFollow[]
+
+  interests UserInterest[]
+  events    UserEvent[]
+
+  reportsMade     Report[] @relation("ReportsMade")
+  reportsReviewed Report[] @relation("ReportsReviewed")
+
+  moderationReviews ModerationResult[] @relation("ModerationReviewedBy")
+
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsActed    Notification[] @relation("NotificationActor")
+
+  adEvents  AdEvent[]
+  auditLogs AuditLog[] @relation("AuditActor")
+
+  @@index([status])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model UserSession {
+  id               String   @id @default(cuid())
+  userId           String
+  sessionTokenHash String   @unique
+  deviceInfo       String?
+  ipAddress        String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AccountVerificationToken {
+  id        String              @id @default(cuid())
+  userId    String
+  channel   VerificationChannel
+  tokenHash String              @unique
+  target    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([channel])
+  @@index([target])
+  @@index([expiresAt])
+}
+
+/**
+ * =========================
+ * CATEGORY
+ * =========================
+ */
+
+model Category {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  description String?
+  iconUrl     String?
+  isSensitive Boolean        @default(false)
+  status      CategoryStatus @default(ACTIVE)
+
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  pins      Pin[]
+  interests UserInterest[]
+  followers CategoryFollow[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([parentId])
+}
+
+/**
+ * =========================
+ * PINS & IMAGES
+ * =========================
+ */
+
+model Pin {
+  id          String  @id @default(cuid())
+  ownerUserId String
+  categoryId  String?
+
+  title       String
+  description String?
+
+  status PinStatus @default(PROCESSING)
+
+  imageOriginalUrl  String?
+  imageThumbnailUrl String?
+  imageFeedUrl      String?
+  imageDetailUrl    String?
+
+  width         Int?
+  height        Int?
+  dominantColor String?
+
+  likeCount   Int @default(0)
+  saveCount   Int @default(0)
+  shareCount  Int @default(0)
+  reportCount Int @default(0)
+  viewCount   Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner    User      @relation("UserPins", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  imageAsset        ImageAsset?
+  moderationResults ModerationResult[]
+
+  likes     Like[]
+  boardPins BoardPin[]
+
+  coverForBoards Board[] @relation("BoardCoverPin")
+
+  @@index([ownerUserId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([likeCount])
+  @@index([saveCount])
+  @@index([reportCount])
+}
+
+model ImageAsset {
+  id          String      @id @default(cuid())
+  pinId       String      @unique
+  ownerUserId String
+  status      ImageStatus @default(UPLOADED)
+
+  originalStorageKey  String?
+  thumbnailStorageKey String?
+  feedStorageKey      String?
+  detailStorageKey    String?
+
+  mimeType           String
+  originalSizeBytes  Int
+  processedSizeBytes Int?
+
+  width  Int?
+  height Int?
+
+  processingError String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pin   Pin  @relation(fields: [pinId], references: [id], onDelete: Cascade)
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId])
+  @@index([status])
+}
+
+model ModerationResult {
+  id       String @id @default(cuid())
+  pinId    String
+  provider String @default("google_vision_safe_search")
+
+  adultLikelihood    Likelihood @default(UNKNOWN)
+  racyLikelihood     Likelihood @default(UNKNOWN)
+  violenceLikelihood Likelihood @default(UNKNOWN)
+  medicalLikelihood  Likelihood @default(UNKNOWN)
+  spoofLikelihood    Likelihood @default(UNKNOWN)
+
+  decision ModerationDecision
+
+  rawResponseJson Json?
+
+  reviewedById String?
+  reviewNote   String?
+
+  createdAt DateTime @default(now())
+
+  pin        Pin   @relation(fields: [pinId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ModerationReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([pinId])
+  @@index([decision])
+  @@index([createdAt])
+  @@index([reviewedById])
+}
+
+/**
+ * =========================
+ * BOARDS & SAVES
+ * =========================
+ */
+
+model Board {
+  id          String          @id @default(cuid())
+  ownerUserId String
+  title       String
+  description String?
+  visibility  BoardVisibility @default(PUBLIC)
+
+  coverPinId String?
+
+  pinCount      Int @default(0)
+  followerCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner    User @relation("UserBoards", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  coverPin Pin? @relation("BoardCoverPin", fields: [coverPinId], references: [id], onDelete: SetNull)
+
+  pins      BoardPin[]
+  followers BoardFollow[]
+
+  @@index([ownerUserId])
+  @@index([visibility])
+  @@index([createdAt])
+}
+
+model BoardPin {
+  id            String  @id @default(cuid())
+  boardId       String
+  pinId         String
+  savedByUserId String
+  note          String?
+
+  createdAt DateTime @default(now())
+
+  board       Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  pin         Pin   @relation(fields: [pinId], references: [id], onDelete: Cascade)
+  savedByUser User  @relation("SavedByUser", fields: [savedByUserId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, pinId])
+  @@index([pinId])
+  @@index([savedByUserId])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * LIKES & FOLLOWS
+ * =========================
+ */
+
+model Like {
+  id     String @id @default(cuid())
+  userId String
+  pinId  String
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pin  Pin  @relation(fields: [pinId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pinId])
+  @@index([pinId])
+  @@index([createdAt])
+}
+
+model UserFollow {
+  id             String @id @default(cuid())
+  followerUserId String
+  targetUserId   String
+
+  createdAt DateTime @default(now())
+
+  follower User @relation("UserFollowFollower", fields: [followerUserId], references: [id], onDelete: Cascade)
+  target   User @relation("UserFollowTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([followerUserId, targetUserId])
+  @@index([targetUserId])
+  @@index([createdAt])
+}
+
+model BoardFollow {
+  id      String @id @default(cuid())
+  userId  String
+  boardId String
+
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
+  @@index([boardId])
+  @@index([createdAt])
+}
+
+model CategoryFollow {
+  id         String @id @default(cuid())
+  userId     String
+  categoryId String
+
+  createdAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * INTERESTS & EVENTS
+ * =========================
+ */
+
+model UserInterest {
+  id         String             @id @default(cuid())
+  userId     String
+  categoryId String
+  score      Float              @default(0)
+  source     UserInterestSource @default(SYSTEM)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId])
+  @@index([userId])
+  @@index([categoryId])
+  @@index([score])
+}
+
+model UserEvent {
+  id        String        @id @default(cuid())
+  userId    String?
+  sessionId String?
+  eventType UserEventType
+
+  targetType String?
+  targetId   String?
+
+  metadataJson Json?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * REPORTS & MODERATION
+ * =========================
+ */
+
+model Report {
+  id             String           @id @default(cuid())
+  reporterUserId String
+  targetType     ReportTargetType
+  targetId       String
+  reason         ReportReason
+  description    String?
+  status         ReportStatus     @default(OPEN)
+
+  reviewedById String?
+  reviewNote   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reporter   User  @relation("ReportsMade", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ReportsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([reporterUserId, targetType, targetId, reason])
+  @@index([reporterUserId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * NOTIFICATIONS
+ * =========================
+ */
+
+model Notification {
+  id      String           @id @default(cuid())
+  userId  String
+  type    NotificationType
+  actorId String?
+
+  targetType String?
+  targetId   String?
+
+  message String
+  isRead  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  user  User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * ADS
+ * =========================
+ */
+
+model AdSlot {
+  id        String      @id @default(cuid())
+  placement AdPlacement
+  provider  AdProvider
+  name      String
+  isActive  Boolean     @default(true)
+
+  /**
+   * Example:
+   * frequencyEvery = 6 means insert one ad after every 6 organic pins.
+   */
+  frequencyEvery Int @default(6)
+
+  providerConfigJson Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events AdEvent[]
+
+  @@index([placement])
+  @@index([provider])
+  @@index([isActive])
+}
+
+model AdEvent {
+  id        String  @id @default(cuid())
+  userId    String?
+  slotId    String?
+  sessionId String?
+
+  provider  AdProvider
+  placement AdPlacement
+  eventType AdEventType
+
+  adReference  String?
+  metadataJson Json?
+
+  createdAt DateTime @default(now())
+
+  user User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  slot AdSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([slotId])
+  @@index([sessionId])
+  @@index([provider])
+  @@index([placement])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * AUDIT LOG
+ * =========================
+ */
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?
+  action     AuditAction
+  targetType String?
+  targetId   String?
+
+  oldValueJson Json?
+  newValueJson Json?
+  note         String?
+  ipAddress    String?
+
+  createdAt DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+/**
+ * =========================
+ * SYSTEM SETTINGS
+ * =========================
+ */
+
+model SystemSetting {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  valueJson   Json
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
