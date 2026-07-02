@@ -1,24 +1,13 @@
-import { randomBytes, scrypt, timingSafeEqual, createHash } from "crypto";
-import { promisify } from "util";
+import { randomBytes, createHash } from "crypto";
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
+import {
+  hashPassword,
+  verifyPassword,
+} from "@/lib/password-hashing";
 import { prisma } from "@/lib/prisma";
 
-const scryptAsync = promisify(scrypt) as (
-  password: string,
-  salt: string,
-  keylen: number,
-  options: { N: number; r: number; p: number; maxmem: number },
-) => Promise<Buffer>;
-
-const PASSWORD_HASH_VERSION = "scrypt";
-const PASSWORD_KEY_LENGTH = 64;
-const SCRYPT_PARAMS = {
-  N: 16384,
-  r: 8,
-  p: 1,
-  maxmem: 64 * 1024 * 1024,
-};
+export { hashPassword, verifyPassword };
 
 export const SESSION_COOKIE_NAME = "pinfa_session";
 export const SESSION_TTL_DAYS = 30;
@@ -43,64 +32,6 @@ export const publicUserSelect = {
   createdAt: true,
   updatedAt: true,
 } as const;
-
-export async function hashPassword(password: string) {
-  const salt = randomBytes(16).toString("base64url");
-  const derivedKey = await scryptAsync(
-    password,
-    salt,
-    PASSWORD_KEY_LENGTH,
-    SCRYPT_PARAMS,
-  );
-
-  return [
-    PASSWORD_HASH_VERSION,
-    SCRYPT_PARAMS.N,
-    SCRYPT_PARAMS.r,
-    SCRYPT_PARAMS.p,
-    salt,
-    derivedKey.toString("base64url"),
-  ].join("$");
-}
-
-export async function verifyPassword(password: string, passwordHash: string) {
-  const [version, n, r, p, salt, storedHash] = passwordHash.split("$");
-  const params = {
-    N: Number(n),
-    r: Number(r),
-    p: Number(p),
-    maxmem: SCRYPT_PARAMS.maxmem,
-  };
-
-  if (
-    version !== PASSWORD_HASH_VERSION ||
-    !salt ||
-    !storedHash ||
-    !Number.isInteger(params.N) ||
-    !Number.isInteger(params.r) ||
-    !Number.isInteger(params.p)
-  ) {
-    return false;
-  }
-
-  try {
-    const derivedKey = await scryptAsync(
-      password,
-      salt,
-      PASSWORD_KEY_LENGTH,
-      params,
-    );
-    const storedKey = Buffer.from(storedHash, "base64url");
-
-    if (storedKey.length !== derivedKey.length) {
-      return false;
-    }
-
-    return timingSafeEqual(storedKey, derivedKey);
-  } catch {
-    return false;
-  }
-}
 
 export function generateSessionToken() {
   return randomBytes(32).toString("base64url");

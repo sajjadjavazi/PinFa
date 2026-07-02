@@ -8,9 +8,12 @@
     "start": "next start",
     "lint": "eslint .",
     "prisma:format": "prisma format",
+    "prisma:validate": "prisma validate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:reset": "prisma migrate reset --force",
+    "prisma:seed": "prisma db seed",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@google-cloud/vision": "^5.3.7",

@@ -33,7 +33,7 @@ const eslintConfig = [
     },
   },
   {
-    files: ["prisma/seed.js"],
+    files: ["prisma/seed.js", "src/lib/password-hashing.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },

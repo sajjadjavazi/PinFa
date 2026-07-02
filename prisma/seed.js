@@ -1,4 +1,7 @@
+require("dotenv/config");
+
 const { PrismaClient } = require("@prisma/client");
+const { hashPassword } = require("../src/lib/password-hashing");
 
 const prisma = new PrismaClient();
 
@@ -68,26 +71,40 @@ const systemSettings = [
   },
 ];
 
-function requiredEnv(name) {
+function readOptionalEnv(name) {
   const value = process.env[name];
 
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-
-  return value;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function getAdminSeedData() {
+async function getAdminSeedData() {
   const verifiedAt = new Date();
 
   return {
     email: process.env.SEED_ADMIN_EMAIL ?? "admin@example.com",
     username: process.env.SEED_ADMIN_USERNAME ?? "superadmin",
     displayName: process.env.SEED_ADMIN_DISPLAY_NAME ?? "Super Admin",
-    passwordHash: requiredEnv("SEED_ADMIN_PASSWORD_HASH"),
+    passwordHash: await getAdminPasswordHash(),
     verifiedAt,
   };
+}
+
+async function getAdminPasswordHash() {
+  const existingHash = readOptionalEnv("SEED_ADMIN_PASSWORD_HASH");
+
+  if (existingHash) {
+    return existingHash;
+  }
+
+  const rawPassword = readOptionalEnv("SEED_ADMIN_PASSWORD");
+
+  if (rawPassword) {
+    return hashPassword(rawPassword);
+  }
+
+  throw new Error(
+    "Missing seed admin password. Set SEED_ADMIN_PASSWORD for local development or SEED_ADMIN_PASSWORD_HASH for pre-hashed deployments.",
+  );
 }
 
 async function seedCategories() {
@@ -176,7 +193,7 @@ async function seedAdSlot() {
 }
 
 async function main() {
-  const admin = getAdminSeedData();
+  const admin = await getAdminSeedData();
 
   await seedCategories();
   await seedSuperAdmin(admin);
