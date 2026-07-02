@@ -57,6 +57,8 @@ export async function processImageVariants(input: {
   const entries: Array<readonly [ImageVariantName, ProcessedVariant]> = [];
 
   try {
+    await validateReadableImage(input.bytes);
+
     for (const variant of VARIANTS) {
       const processed = await sharp(input.bytes, { failOn: "warning" })
         .rotate()
@@ -100,6 +102,14 @@ export async function processImageVariants(input: {
     ),
     variants,
   };
+}
+
+async function validateReadableImage(bytes: Buffer) {
+  const metadata = await sharp(bytes, { failOn: "warning" }).metadata();
+
+  if (!metadata.width || !metadata.height) {
+    throw new Error("Image dimensions could not be read.");
+  }
 }
 
 function toProcessedVariant(

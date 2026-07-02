@@ -1,17 +1,17 @@
 import { randomUUID } from "crypto";
-import { ModerationDecision, NotificationType } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { logAnalyticsError, logAnalyticsEvent } from "@/lib/analytics";
 import { getCurrentUser } from "@/lib/auth";
 import { processImageVariants } from "@/lib/image-processing";
-import { moderateImageWithSafeSearch } from "@/lib/moderation/moderate-image";
 import {
   deleteStoredUpload,
   deleteStoredUploads,
   storeOriginalUpload,
 } from "@/lib/local-upload-storage";
-import { validatePinUploadFormData } from "@/lib/pin-upload-validation";
-import { createNotification } from "@/lib/notifications";
+import {
+  validateImageFileSignature,
+  validatePinUploadFormData,
+} from "@/lib/pin-upload-validation";
 import { prisma } from "@/lib/prisma";
 import { getUploadLimits } from "@/lib/upload-settings";
 
@@ -71,6 +71,25 @@ export async function POST(request: NextRequest) {
 
   const pinId = randomUUID();
   const bytes = Buffer.from(await validation.data.file.arrayBuffer());
+  const signatureError = validateImageFileSignature({
+    bytes,
+    extension: validation.data.extension,
+    mimeType: validation.data.file.type,
+  });
+
+  if (signatureError) {
+    logAnalyticsEvent("upload.validation.failed", {
+      durationMs: Date.now() - startedAt,
+      fields: ["imageSignature"],
+      userId: user.id,
+    });
+
+    return NextResponse.json(
+      { errors: { image: signatureError } },
+      { status: 400 },
+    );
+  }
+
   const storedUpload = await storeOriginalUpload({
     pinId,
     extension: validation.data.extension,
@@ -94,7 +113,7 @@ export async function POST(request: NextRequest) {
         data: {
           pinId,
           ownerUserId: user.id,
-          status: "PROCESSING",
+          status: "UPLOADED",
           originalStorageKey: storedUpload.storageKey,
           mimeType: validation.data.file.type,
           originalSizeBytes: validation.data.file.size,
@@ -115,14 +134,21 @@ export async function POST(request: NextRequest) {
     null;
 
   try {
+    await prisma.imageAsset.update({
+      where: {
+        pinId,
+      },
+      data: {
+        status: "PROCESSING",
+        processingError: null,
+      },
+    });
+
     const processed = await processImageVariants({
       pinId,
       bytes,
     });
     processedImage = processed;
-    const moderation = await moderateImageWithSafeSearch({
-      image: bytes,
-    });
 
     const pin = await prisma.$transaction(async (transaction) => {
       await transaction.imageAsset.update({
@@ -141,26 +167,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await transaction.moderationResult.create({
-        data: {
-          pinId,
-          provider: moderation.provider,
-          adultLikelihood: moderation.adultLikelihood,
-          racyLikelihood: moderation.racyLikelihood,
-          violenceLikelihood: moderation.violenceLikelihood,
-          medicalLikelihood: moderation.medicalLikelihood,
-          spoofLikelihood: moderation.spoofLikelihood,
-          decision: moderation.decision,
-          rawResponseJson: moderation.rawResponseJson,
-        },
-      });
-
       const pin = await transaction.pin.update({
         where: {
           id: pinId,
         },
         data: {
-          status: moderation.pinStatus,
+          status: "PENDING_REVIEW",
           imageThumbnailUrl: `/api/pins/${pinId}/image?variant=thumbnail`,
           imageFeedUrl: `/api/pins/${pinId}/image?variant=feed`,
           imageDetailUrl: `/api/pins/${pinId}/image?variant=detail`,
@@ -178,28 +190,6 @@ export async function POST(request: NextRequest) {
           height: true,
         },
       });
-
-      if (
-        moderation.decision === ModerationDecision.AUTO_APPROVED ||
-        moderation.decision === ModerationDecision.AUTO_REJECTED
-      ) {
-        await createNotification(
-          {
-            message:
-              moderation.decision === ModerationDecision.AUTO_APPROVED
-                ? `Your Pin "${pin.title}" was approved.`
-                : `Your Pin "${pin.title}" was rejected.`,
-            targetId: pinId,
-            targetType: "PIN",
-            type:
-              moderation.decision === ModerationDecision.AUTO_APPROVED
-                ? NotificationType.PIN_APPROVED
-                : NotificationType.PIN_REJECTED,
-            userId: user.id,
-          },
-          transaction,
-        );
-      }
 
       return pin;
     });
