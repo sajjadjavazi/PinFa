@@ -83,6 +83,8 @@ export function createSafeSearchFailureResult(
     rawResponseJson: {
       provider: providerName,
       error: "SafeSearch request failed.",
+      errorType: error instanceof Error ? error.name : typeof error,
+      failedOpen: true,
       message: error instanceof Error ? error.message : "Unknown error.",
     } satisfies Prisma.InputJsonValue,
   };

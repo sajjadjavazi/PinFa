@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { logAnalyticsError, logAnalyticsEvent } from "@/lib/analytics";
 import { getCurrentUser } from "@/lib/auth";
 import { processImageVariants } from "@/lib/image-processing";
+import { moderateImageWithSafeSearch } from "@/lib/moderation/moderate-image";
 import {
   deleteStoredUpload,
   deleteStoredUploads,
@@ -149,6 +150,17 @@ export async function POST(request: NextRequest) {
       bytes,
     });
     processedImage = processed;
+    const moderation = await moderateImageWithSafeSearch({
+      image: bytes,
+    });
+
+    if (moderation.failedOpen) {
+      logAnalyticsEvent("moderation.safesearch.failed_open", {
+        durationMs: Date.now() - startedAt,
+        pinId,
+        userId: user.id,
+      });
+    }
 
     const pin = await prisma.$transaction(async (transaction) => {
       await transaction.imageAsset.update({
@@ -167,12 +179,26 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      await transaction.moderationResult.create({
+        data: {
+          pinId,
+          provider: moderation.provider,
+          adultLikelihood: moderation.adultLikelihood,
+          racyLikelihood: moderation.racyLikelihood,
+          violenceLikelihood: moderation.violenceLikelihood,
+          medicalLikelihood: moderation.medicalLikelihood,
+          spoofLikelihood: moderation.spoofLikelihood,
+          decision: moderation.decision,
+          rawResponseJson: moderation.rawResponseJson,
+        },
+      });
+
       const pin = await transaction.pin.update({
         where: {
           id: pinId,
         },
         data: {
-          status: "PENDING_REVIEW",
+          status: moderation.pinStatus,
           imageThumbnailUrl: `/api/pins/${pinId}/image?variant=thumbnail`,
           imageFeedUrl: `/api/pins/${pinId}/image?variant=feed`,
           imageDetailUrl: `/api/pins/${pinId}/image?variant=detail`,
@@ -196,6 +222,7 @@ export async function POST(request: NextRequest) {
 
     logAnalyticsEvent("upload.processed", {
       durationMs: Date.now() - startedAt,
+      moderationDecision: moderation.decision,
       pinId,
       pinStatus: pin.status,
       userId: user.id,

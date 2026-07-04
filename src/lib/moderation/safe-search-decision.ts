@@ -11,6 +11,13 @@ const safeLikelihoods = new Set<Likelihood>([
   Likelihood.UNLIKELY,
 ]);
 
+const criticalLikelihoodFields = [
+  "adultLikelihood",
+  "racyLikelihood",
+  "violenceLikelihood",
+  "medicalLikelihood",
+] satisfies Array<keyof SafeSearchLikelihoods>;
+
 export function decideSafeSearchModeration(
   result: SafeSearchLikelihoods,
 ): ModerationDecision {
@@ -35,11 +42,15 @@ export function decideSafeSearchModeration(
     return ModerationDecision.HUMAN_REVIEW_REQUIRED;
   }
 
-  if (Object.values(result).some((value) => value === Likelihood.UNKNOWN)) {
+  if (
+    criticalLikelihoodFields.some((field) => result[field] === Likelihood.UNKNOWN)
+  ) {
     return ModerationDecision.HUMAN_REVIEW_REQUIRED;
   }
 
-  if (Object.values(result).every((value) => safeLikelihoods.has(value))) {
+  if (
+    criticalLikelihoodFields.every((field) => safeLikelihoods.has(result[field]))
+  ) {
     return ModerationDecision.AUTO_APPROVED;
   }
 
