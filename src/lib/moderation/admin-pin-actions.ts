@@ -1,11 +1,9 @@
 import {
   AuditAction,
   ModerationDecision,
-  NotificationType,
   PinStatus,
   Prisma,
 } from "@prisma/client";
-import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 export type AdminPinModerationAction = "approve" | "reject" | "remove";
@@ -14,35 +12,35 @@ type ActionConfig = {
   allowedStatuses: PinStatus[];
   auditAction: AuditAction;
   decision: ModerationDecision;
+  defaultNote: string;
   label: string;
   nextStatus: PinStatus;
-  note: string;
 };
 
 const ACTION_CONFIG: Record<AdminPinModerationAction, ActionConfig> = {
   approve: {
-    allowedStatuses: [PinStatus.PENDING_REVIEW, PinStatus.REJECTED],
+    allowedStatuses: [PinStatus.PENDING_REVIEW],
     auditAction: AuditAction.PIN_APPROVED,
+    defaultNote: "Pin manually approved.",
     decision: ModerationDecision.MANUALLY_APPROVED,
     label: "approved",
     nextStatus: PinStatus.PUBLISHED,
-    note: "Pin manually approved.",
   },
   reject: {
     allowedStatuses: [PinStatus.PENDING_REVIEW],
     auditAction: AuditAction.PIN_REJECTED,
+    defaultNote: "Pin manually rejected.",
     decision: ModerationDecision.MANUALLY_REJECTED,
     label: "rejected",
     nextStatus: PinStatus.REJECTED,
-    note: "Pin manually rejected.",
   },
   remove: {
     allowedStatuses: [PinStatus.PUBLISHED],
     auditAction: AuditAction.PIN_REMOVED,
+    defaultNote: "Published Pin manually removed.",
     decision: ModerationDecision.REMOVED,
     label: "removed",
     nextStatus: PinStatus.REMOVED,
-    note: "Published Pin manually removed.",
   },
 };
 
@@ -60,8 +58,10 @@ export async function applyAdminPinModerationAction(input: {
   actorId: string;
   ipAddress?: string | null;
   pinId: string;
+  reviewNote?: string | null;
 }) {
   const config = ACTION_CONFIG[input.action];
+  const reviewNote = normalizeReviewNote(input.reviewNote) ?? config.defaultNote;
 
   return prisma.$transaction(async (transaction) => {
     const pin = await transaction.pin.findUnique({
@@ -70,9 +70,7 @@ export async function applyAdminPinModerationAction(input: {
       },
       select: {
         id: true,
-        ownerUserId: true,
         status: true,
-        title: true,
         moderationResults: {
           orderBy: {
             createdAt: "desc",
@@ -80,6 +78,8 @@ export async function applyAdminPinModerationAction(input: {
           select: {
             id: true,
             decision: true,
+            reviewNote: true,
+            reviewedById: true,
           },
           take: 1,
         },
@@ -116,7 +116,7 @@ export async function applyAdminPinModerationAction(input: {
         data: {
           decision: config.decision,
           reviewedById: input.actorId,
-          reviewNote: config.note,
+          reviewNote,
         },
       });
     } else {
@@ -126,7 +126,7 @@ export async function applyAdminPinModerationAction(input: {
           provider: "manual_admin_review",
           decision: config.decision,
           reviewedById: input.actorId,
-          reviewNote: config.note,
+          reviewNote,
         },
       });
     }
@@ -140,40 +140,29 @@ export async function applyAdminPinModerationAction(input: {
         oldValueJson: {
           status: pin.status,
           moderationDecision: latestModerationResult?.decision ?? null,
+          reviewNote: latestModerationResult?.reviewNote ?? null,
+          reviewedById: latestModerationResult?.reviewedById ?? null,
         } satisfies Prisma.InputJsonValue,
         newValueJson: {
           status: config.nextStatus,
           moderationDecision: config.decision,
+          reviewNote,
+          reviewedById: input.actorId,
         } satisfies Prisma.InputJsonValue,
-        note: config.note,
+        note: reviewNote,
         ipAddress: input.ipAddress,
       },
     });
 
-    if (input.action === "approve" || input.action === "reject") {
-      await createNotification(
-        {
-          actorId: input.actorId,
-          message:
-            input.action === "approve"
-              ? `Your Pin "${pin.title}" was approved.`
-              : `Your Pin "${pin.title}" was rejected.`,
-          targetId: input.pinId,
-          targetType: "PIN",
-          type:
-            input.action === "approve"
-              ? NotificationType.PIN_APPROVED
-              : NotificationType.PIN_REJECTED,
-          userId: pin.ownerUserId,
-        },
-        transaction,
-      );
-    }
-
     return {
+      decision: config.decision,
       id: input.pinId,
       status: config.nextStatus,
-      decision: config.decision,
     };
   });
+}
+
+function normalizeReviewNote(note: string | null | undefined) {
+  const trimmed = note?.trim();
+  return trimmed ? trimmed : null;
 }

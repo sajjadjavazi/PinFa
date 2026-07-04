@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 import { requireAdminPageUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -30,17 +31,12 @@ export default async function AdminLayout({
               Moderation
             </Link>
             <Link
-              href="/admin/reports"
-              className="rounded-md border border-neutral-300 px-4 py-2 text-neutral-800 transition hover:border-neutral-950"
-            >
-              Reports
-            </Link>
-            <Link
               href="/profile"
               className="rounded-md border border-neutral-300 px-4 py-2 text-neutral-800 transition hover:border-neutral-950"
             >
               Profile
             </Link>
+            <AdminLogoutButton />
           </nav>
         </div>
       </header>

@@ -1,93 +1,33 @@
-import { PinStatus, Prisma } from "@prisma/client";
 import Link from "next/link";
-import { ModerationActionButton } from "@/components/admin/ModerationActionButton";
+import { ModerationActionPanel } from "@/components/admin/ModerationActionButton";
 import { requireAdminPageUser } from "@/lib/admin";
-import { prisma } from "@/lib/prisma";
+import {
+  getPendingModerationPins,
+  getRecentlyPublishedModerationPins,
+  type ModerationPin,
+} from "@/lib/moderation/admin-moderation-queries";
 
 export const dynamic = "force-dynamic";
 
-const moderationPinSelect = {
-  id: true,
-  title: true,
-  description: true,
-  status: true,
-  imageOriginalUrl: true,
-  imageThumbnailUrl: true,
-  imageFeedUrl: true,
-  imageDetailUrl: true,
-  width: true,
-  height: true,
-  reportCount: true,
-  createdAt: true,
-  owner: {
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-      avatarUrl: true,
-      role: true,
-      trustScore: true,
-    },
-  },
-  category: {
-    select: {
-      name: true,
-      slug: true,
-      isSensitive: true,
-    },
-  },
-  moderationResults: {
-    orderBy: {
-      createdAt: "desc",
-    },
-    select: {
-      adultLikelihood: true,
-      racyLikelihood: true,
-      violenceLikelihood: true,
-      medicalLikelihood: true,
-      spoofLikelihood: true,
-      decision: true,
-      provider: true,
-      createdAt: true,
-      reviewedBy: {
-        select: {
-          displayName: true,
-        },
-      },
-    },
-    take: 1,
-  },
-} satisfies Prisma.PinSelect;
+type AdminModerationPageProps = {
+  searchParams?: Promise<{
+    cursor?: string;
+  }>;
+};
 
-type ModerationPin = Prisma.PinGetPayload<{
-  select: typeof moderationPinSelect;
-}>;
-
-export default async function AdminModerationPage() {
+export default async function AdminModerationPage({
+  searchParams,
+}: AdminModerationPageProps) {
   await requireAdminPageUser();
 
-  const [pendingPins, publishedPins] = await Promise.all([
-    prisma.pin.findMany({
-      where: {
-        status: PinStatus.PENDING_REVIEW,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: moderationPinSelect,
-      take: 50,
+  const resolvedSearchParams = await searchParams;
+  const [pendingQueue, publishedPins] = await Promise.all([
+    getPendingModerationPins({
+      cursor: resolvedSearchParams?.cursor,
     }),
-    prisma.pin.findMany({
-      where: {
-        status: PinStatus.PUBLISHED,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      select: moderationPinSelect,
-      take: 20,
-    }),
+    getRecentlyPublishedModerationPins(20),
   ]);
+  const pendingPins = pendingQueue.items;
 
   return (
     <div className="grid gap-8">
@@ -123,6 +63,16 @@ export default async function AdminModerationPage() {
             {pendingPins.map((pin) => (
               <ModerationPinCard key={pin.id} pin={pin} mode="pending" />
             ))}
+            {pendingQueue.hasMore ? (
+              <div>
+                <Link
+                  href={`/admin/moderation?cursor=${pendingQueue.nextCursor}`}
+                  className="inline-grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
+                >
+                  Next page
+                </Link>
+              </div>
+            ) : null}
           </div>
         ) : (
           <EmptyState message="No Pins are pending review." />
@@ -159,14 +109,10 @@ function ModerationPinCard({
   pin: ModerationPin;
 }) {
   const moderationResult = pin.moderationResults[0] ?? null;
-  const imageUrl =
-    pin.imageThumbnailUrl ??
-    pin.imageFeedUrl ??
-    pin.imageDetailUrl ??
-    pin.imageOriginalUrl;
+  const imageUrl = pin.imageThumbnailUrl ?? pin.imageFeedUrl ?? pin.imageDetailUrl;
 
   return (
-    <article className="grid gap-5 rounded-md bg-white p-4 shadow-sm ring-1 ring-neutral-200 lg:grid-cols-[220px_minmax(0,1fr)_220px]">
+    <article className="grid gap-5 rounded-md bg-white p-4 shadow-sm ring-1 ring-neutral-200 lg:grid-cols-[220px_minmax(0,1fr)_240px]">
       <div className="overflow-hidden rounded-md bg-neutral-100">
         {imageUrl ? (
           <img
@@ -176,7 +122,7 @@ function ModerationPinCard({
           />
         ) : (
           <div className="grid aspect-[4/3] place-items-center text-sm text-neutral-500">
-            Image unavailable
+            Processed image unavailable
           </div>
         )}
       </div>
@@ -213,6 +159,10 @@ function ModerationPinCard({
         </div>
 
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <InfoItem label="Pin ID">
+            <span className="break-all font-mono text-xs">{pin.id}</span>
+          </InfoItem>
+          <InfoItem label="Created">{formatDate(pin.createdAt)}</InfoItem>
           <InfoItem label="Uploader">
             <Link
               href={`/users/${pin.owner.username}`}
@@ -225,6 +175,7 @@ function ModerationPinCard({
           <InfoItem label="Category">
             {pin.category?.name ?? "Uncategorized"}
           </InfoItem>
+          <InfoItem label="Current status">{pin.status}</InfoItem>
           <InfoItem label="Reports">{pin.reportCount}</InfoItem>
           <InfoItem label="Size">
             {pin.width && pin.height ? `${pin.width} x ${pin.height}` : "Unknown"}
@@ -252,37 +203,16 @@ function ModerationPinCard({
           )}
           {moderationResult ? (
             <p className="mt-2 text-xs text-neutral-500">
-              {moderationResult.provider} · {moderationResult.decision}
+              {moderationResult.provider} - {moderationResult.decision}
+              {moderationResult.reviewedBy ? (
+                <> - reviewed by {moderationResult.reviewedBy.displayName}</>
+              ) : null}
             </p>
           ) : null}
         </section>
       </div>
 
-      <div className="grid content-start gap-3">
-        {mode === "pending" ? (
-          <>
-            <ModerationActionButton
-              action="approve"
-              label="Approve"
-              pinId={pin.id}
-              tone="approve"
-            />
-            <ModerationActionButton
-              action="reject"
-              label="Reject"
-              pinId={pin.id}
-              tone="reject"
-            />
-          </>
-        ) : (
-          <ModerationActionButton
-            action="remove"
-            label="Remove"
-            pinId={pin.id}
-            tone="remove"
-          />
-        )}
-      </div>
+      <ModerationActionPanel mode={mode} pinId={pin.id} />
     </article>
   );
 }
@@ -321,6 +251,13 @@ function likelihoodClasses(value: string) {
   }
 
   return "bg-emerald-50 text-emerald-800";
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function EmptyState({ message }: { message: string }) {
