@@ -1,8 +1,6 @@
-import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { applyFollowedBoardInterestSignal } from "@/lib/interest-signals";
-import { prisma } from "@/lib/prisma";
+import { followPublicBoard, unfollowBoard } from "@/lib/board-actions";
 
 export const runtime = "nodejs";
 
@@ -23,70 +21,28 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   }
 
   const { id: boardId } = await context.params;
-  const board = await prisma.board.findFirst({
-    where: {
-      id: boardId,
-      visibility: "PUBLIC",
-    },
-    select: {
-      id: true,
-      ownerUserId: true,
-    },
-  });
-
-  if (!board) {
-    return NextResponse.json(
-      { errors: { board: "Board not found." } },
-      { status: 404 },
-    );
-  }
-
-  if (board.ownerUserId === currentUser.id) {
-    return NextResponse.json(
-      { errors: { board: "You cannot follow your own Board." } },
-      { status: 400 },
-    );
-  }
-
   try {
-    await prisma.$transaction([
-      prisma.boardFollow.create({
-        data: {
-          userId: currentUser.id,
-          boardId,
-        },
-      }),
-      prisma.board.update({
-        where: {
-          id: boardId,
-        },
-        data: {
-          followerCount: {
-            increment: 1,
-          },
-        },
-      }),
-      prisma.userEvent.create({
-        data: {
-          userId: currentUser.id,
-          eventType: "FOLLOW_BOARD",
-          targetType: "BOARD",
-          targetId: boardId,
-        },
-      }),
-    ]);
-
-    await applyFollowedBoardInterestSignal({
+    const result = await followPublicBoard({
       boardId,
       userId: currentUser.id,
     });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
-    }
-  }
 
-  return NextResponse.json({ following: true });
+    if (!result.ok) {
+      return NextResponse.json(
+        { errors: result.errors },
+        { status: result.status },
+      );
+    }
+
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error("Follow Board failed", error);
+
+    return NextResponse.json(
+      { errors: { board: "Follow failed." } },
+      { status: 500 },
+    );
+  }
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
@@ -100,53 +56,26 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   }
 
   const { id: boardId } = await context.params;
-  const deleted = await prisma.$transaction(async (transaction) => {
-    const removed = await transaction.boardFollow.deleteMany({
-      where: {
-        userId: currentUser.id,
-        boardId,
-      },
+  try {
+    const result = await unfollowBoard({
+      boardId,
+      userId: currentUser.id,
     });
 
-    if (removed.count === 0) {
-      return removed;
+    if (!result.ok) {
+      return NextResponse.json(
+        { errors: result.errors },
+        { status: result.status },
+      );
     }
 
-    await transaction.board.updateMany({
-      where: {
-        id: boardId,
-        followerCount: {
-          gt: 0,
-        },
-      },
-      data: {
-        followerCount: {
-          decrement: 1,
-        },
-      },
-    });
+    return NextResponse.json(result.data, { status: result.status });
+  } catch (error) {
+    console.error("Unfollow Board failed", error);
 
-    await transaction.userEvent.create({
-      data: {
-        userId: currentUser.id,
-        eventType: "UNFOLLOW_BOARD",
-        targetType: "BOARD",
-        targetId: boardId,
-      },
-    });
-
-    return removed;
-  });
-
-  return NextResponse.json({
-    following: false,
-    changed: deleted.count > 0,
-  });
-}
-
-function isUniqueConstraintError(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  );
+    return NextResponse.json(
+      { errors: { board: "Unfollow failed." } },
+      { status: 500 },
+    );
+  }
 }

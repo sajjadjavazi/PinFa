@@ -21,13 +21,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const { id: pinId } = await context.params;
+  const { id: boardId } = await context.params;
   const body = await readJsonBody(request);
-  const boardId = getBoardId(body);
+  const pinId = getPinId(body);
 
-  if (!boardId) {
+  if (!pinId) {
     return NextResponse.json(
-      { errors: { boardId: "Board is required." } },
+      { errors: { pinId: "Pin is required." } },
       { status: 400 },
     );
   }
@@ -57,12 +57,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-function getBoardId(body: unknown) {
-  if (!body || typeof body !== "object" || !("boardId" in body)) {
+function getPinId(body: unknown) {
+  if (!body || typeof body !== "object" || !("pinId" in body)) {
     return "";
   }
 
-  const value = body.boardId;
+  const value = body.pinId;
 
   return typeof value === "string" ? value : "";
 }

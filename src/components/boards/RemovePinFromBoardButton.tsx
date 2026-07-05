@@ -17,6 +17,10 @@ export function RemovePinFromBoardButton({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function removePin() {
+    if (!window.confirm("Remove this Pin from the Board?")) {
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
 

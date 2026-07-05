@@ -38,6 +38,11 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
           orderBy: {
             createdAt: "desc",
           },
+          where: {
+            pin: {
+              status: "PUBLISHED",
+            },
+          },
           include: {
             pin: {
               select: {
@@ -92,9 +97,6 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
     board.coverPin?.imageFeedUrl ??
     board.coverPin?.imageThumbnailUrl ??
     board.coverPin?.imageDetailUrl;
-  const visibleBoardPins = board.pins.filter(
-    (boardPin) => boardPin.pin.status === "PUBLISHED" || isOwner || isAdmin,
-  );
 
   return (
     <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-10 px-6 py-10">
@@ -182,9 +184,9 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
 
       <section className="grid gap-5">
         <h2 className="text-xl font-semibold text-neutral-950">Pins</h2>
-        {visibleBoardPins.length > 0 ? (
+        {board.pins.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleBoardPins.map((boardPin) => (
+            {board.pins.map((boardPin) => (
               <article key={boardPin.id} className="grid gap-3">
                 <Link href={`/pins/${boardPin.pin.id}`} className="group grid gap-3">
                   <PinImage pin={boardPin.pin} />

@@ -28,13 +28,21 @@ export function SaveToBoardForm({ boards, pinId }: SaveToBoardFormProps) {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const response = await fetch(`/api/pins/${pinId}/save`, {
+    const boardId = formData.get("boardId");
+
+    if (typeof boardId !== "string" || boardId.length === 0) {
+      setError("Select a Board.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const response = await fetch(`/api/boards/${boardId}/pins`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        boardId: formData.get("boardId"),
+        pinId,
       }),
     });
     const result = await response.json();
