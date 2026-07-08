@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { BoardCard } from "@/components/boards/BoardCard";
 import { FollowButton } from "@/components/FollowButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -13,6 +15,61 @@ type PublicProfilePageProps = {
     username: string;
   }>;
 };
+
+export async function generateMetadata({
+  params,
+}: PublicProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
+  const normalizedUsername = decodeURIComponent(username).toLowerCase();
+  const profile = await prisma.user.findFirst({
+    where: {
+      status: "ACTIVE",
+      username: normalizedUsername,
+    },
+    select: {
+      avatarUrl: true,
+      bio: true,
+      displayName: true,
+      username: true,
+    },
+  });
+
+  if (!profile) {
+    return {
+      robots: {
+        follow: false,
+        index: false,
+      },
+      title: "Profile not available",
+    };
+  }
+
+  const description =
+    profile.bio?.trim() ||
+    `Explore ${profile.displayName}'s public Boards and visual inspiration on PinFa.`;
+
+  return {
+    alternates: {
+      canonical: `/users/${profile.username}`,
+    },
+    description: truncateDescription(description),
+    openGraph: {
+      description: truncateDescription(description),
+      images: profile.avatarUrl
+        ? [
+            {
+              alt: profile.displayName,
+              url: profile.avatarUrl,
+            },
+          ]
+        : undefined,
+      title: `${profile.displayName} (@${profile.username})`,
+      type: "profile",
+      url: `/users/${profile.username}`,
+    },
+    title: `${profile.displayName} (@${profile.username})`,
+  };
+}
 
 export default async function PublicProfilePage({
   params,
@@ -68,13 +125,17 @@ export default async function PublicProfilePage({
           imageThumbnailUrl: true,
           imageFeedUrl: true,
           imageDetailUrl: true,
+          width: true,
+          height: true,
         },
       },
     },
   });
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-5xl gap-10 px-6 py-10">
+    <>
+    <AppHeader currentUser={currentUser} />
+    <main className="mx-auto grid min-h-screen w-full max-w-5xl gap-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="flex flex-col gap-6 border-b border-neutral-200 pb-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
           <ProfileAvatar
@@ -154,5 +215,10 @@ export default async function PublicProfilePage({
         )}
       </section>
     </main>
+    </>
   );
+}
+
+function truncateDescription(value: string) {
+  return value.length > 160 ? `${value.slice(0, 157).trimEnd()}...` : value;
 }

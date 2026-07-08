@@ -30,18 +30,54 @@ export function PinSocialActions({
   const [isSharing, setIsSharing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  async function copyPublicLink() {
+    setIsSharing(true);
+    setMessage(null);
+
+    const url = window.location.href;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          url,
+        });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        setMessage("Link copied.");
+      } else {
+        setMessage(url);
+      }
+    } catch {
+      setMessage("Share canceled.");
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="grid gap-3 rounded-md border border-neutral-200 p-4">
         <p className="text-sm text-neutral-600">
-          Log in to like, share, or report this Pin.
+          Log in to like or report this Pin. You can copy the public link now.
         </p>
-        <Link
-          href="/auth/login"
-          className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
-        >
-          Log in
-        </Link>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={copyPublicLink}
+            disabled={isSharing}
+            aria-label="Share Pin"
+            className="h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSharing ? "Sharing..." : "Share"}
+          </button>
+          <Link
+            href="/auth/login"
+            className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
+          >
+            Log in
+          </Link>
+        </div>
+        {message ? <p className="text-sm text-neutral-600">{message}</p> : null}
       </div>
     );
   }
@@ -133,6 +169,7 @@ export function PinSocialActions({
           type="button"
           onClick={toggleLike}
           disabled={isLiking}
+          aria-label={isLiked ? "Unlike Pin" : "Like Pin"}
           className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
         >
           {isLiking ? "Saving..." : isLiked ? "Unlike" : "Like"}
@@ -141,6 +178,7 @@ export function PinSocialActions({
           type="button"
           onClick={sharePin}
           disabled={isSharing}
+          aria-label="Share Pin"
           className="h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSharing ? "Sharing..." : "Share"}

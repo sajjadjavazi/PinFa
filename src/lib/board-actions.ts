@@ -1,8 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { NotificationType, Prisma } from "@prisma/client";
 import {
   applyCategoryInterestSignal,
   applyFollowedBoardInterestSignal,
 } from "@/lib/interest-signals";
+import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 type BoardActionResult<T> =
@@ -18,6 +19,7 @@ type BoardActionResult<T> =
     };
 
 export async function savePublishedPinToBoard(input: {
+  actorDisplayName: string;
   boardId: string;
   pinId: string;
   userId: string;
@@ -47,6 +49,7 @@ export async function savePublishedPinToBoard(input: {
       select: {
         categoryId: true,
         id: true,
+        ownerUserId: true,
       },
     }),
     prisma.board.findFirst({
@@ -126,6 +129,18 @@ export async function savePublishedPinToBoard(input: {
           userId: input.userId,
         },
       });
+
+      await createNotification(
+        {
+          actorId: input.userId,
+          message: `${input.actorDisplayName} saved your Pin.`,
+          targetId: input.pinId,
+          targetType: "PIN",
+          type: NotificationType.PIN_SAVED,
+          userId: pin.ownerUserId,
+        },
+        transaction,
+      );
 
       return {
         board: updatedBoard,

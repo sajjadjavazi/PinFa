@@ -1,4 +1,21 @@
+import type { Metadata } from "next";
 import { RegisterForm } from "./RegisterForm";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/auth/register",
+  },
+  description:
+    "Create a PinFa account to save Pins, build Boards, and personalize your visual feed.",
+  openGraph: {
+    description:
+      "Create a PinFa account to save Pins, build Boards, and personalize your visual feed.",
+    title: "Create your PinFa account",
+    type: "website",
+    url: "/auth/register",
+  },
+  title: "Create Account",
+};
 
 export default function RegisterPage() {
   return (

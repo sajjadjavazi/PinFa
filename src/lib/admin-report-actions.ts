@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 export type AdminReportAction =
   | "reject"
   | "remove-pin"
+  | "review"
   | "resolve"
   | "suspend-user";
 
@@ -33,6 +34,7 @@ export async function applyAdminReportAction(input: {
   actorRole: UserRole;
   ipAddress?: string | null;
   reportId: string;
+  reviewNote?: string | null;
 }) {
   return prisma.$transaction(async (transaction) => {
     const report = await transaction.report.findUnique({
@@ -61,11 +63,35 @@ export async function applyAdminReportAction(input: {
       throw new AdminReportActionError("Report is already rejected.", 400);
     }
 
-    if (input.action === "resolve") {
+    if (input.action === "review") {
+      const reviewNote =
+        normalizeReviewNote(input.reviewNote) ?? "Report marked in review.";
+
       await updateReportStatus({
         actorId: input.actorId,
+        auditAction: AuditAction.SYSTEM_CHANGE,
         ipAddress: input.ipAddress,
-        note: "Report manually resolved.",
+        note: reviewNote,
+        report,
+        status: ReportStatus.IN_REVIEW,
+        transaction,
+      });
+
+      return {
+        id: report.id,
+        status: ReportStatus.IN_REVIEW,
+      };
+    }
+
+    if (input.action === "resolve") {
+      const reviewNote =
+        normalizeReviewNote(input.reviewNote) ?? "Report manually resolved.";
+
+      await updateReportStatus({
+        actorId: input.actorId,
+        auditAction: AuditAction.REPORT_RESOLVED,
+        ipAddress: input.ipAddress,
+        note: reviewNote,
         report,
         status: ReportStatus.RESOLVED,
         transaction,
@@ -78,10 +104,14 @@ export async function applyAdminReportAction(input: {
     }
 
     if (input.action === "reject") {
+      const reviewNote =
+        normalizeReviewNote(input.reviewNote) ?? "Report manually rejected.";
+
       await updateReportStatus({
         actorId: input.actorId,
+        auditAction: AuditAction.REPORT_RESOLVED,
         ipAddress: input.ipAddress,
-        note: "Report manually rejected.",
+        note: reviewNote,
         report,
         status: ReportStatus.REJECTED,
         transaction,
@@ -98,6 +128,7 @@ export async function applyAdminReportAction(input: {
         actorId: input.actorId,
         ipAddress: input.ipAddress,
         report,
+        reviewNote: input.reviewNote,
         transaction,
       });
     }
@@ -107,6 +138,7 @@ export async function applyAdminReportAction(input: {
       actorRole: input.actorRole,
       ipAddress: input.ipAddress,
       report,
+      reviewNote: input.reviewNote,
       transaction,
     });
   });
@@ -114,6 +146,7 @@ export async function applyAdminReportAction(input: {
 
 async function updateReportStatus(input: {
   actorId: string;
+  auditAction: AuditAction;
   ipAddress?: string | null;
   note: string;
   report: ReportSnapshot;
@@ -134,7 +167,7 @@ async function updateReportStatus(input: {
   await input.transaction.auditLog.create({
     data: {
       actorId: input.actorId,
-      action: AuditAction.REPORT_RESOLVED,
+      action: input.auditAction,
       ipAddress: input.ipAddress,
       newValueJson: {
         reportStatus: input.status,
@@ -167,6 +200,7 @@ async function removeReportedPin(input: {
   actorId: string;
   ipAddress?: string | null;
   report: ReportSnapshot;
+  reviewNote?: string | null;
   transaction: Prisma.TransactionClient;
 }) {
   if (input.report.targetType !== ReportTargetType.PIN) {
@@ -257,13 +291,17 @@ async function removeReportedPin(input: {
     });
   }
 
+  const reportReviewNote =
+    normalizeReviewNote(input.reviewNote) ??
+    (pin.status === PinStatus.REMOVED
+      ? "Report resolved because the Pin was already removed."
+      : "Report resolved by removing the reported Pin.");
+
   await updateReportStatus({
     actorId: input.actorId,
+    auditAction: AuditAction.REPORT_RESOLVED,
     ipAddress: input.ipAddress,
-    note:
-      pin.status === PinStatus.REMOVED
-        ? "Report resolved because the Pin was already removed."
-        : "Report resolved by removing the reported Pin.",
+    note: reportReviewNote,
     report: input.report,
     status: ReportStatus.RESOLVED,
     transaction: input.transaction,
@@ -281,6 +319,7 @@ async function suspendReportedUser(input: {
   actorRole: UserRole;
   ipAddress?: string | null;
   report: ReportSnapshot;
+  reviewNote?: string | null;
   transaction: Prisma.TransactionClient;
 }) {
   if (input.report.targetType !== ReportTargetType.USER) {
@@ -350,13 +389,17 @@ async function suspendReportedUser(input: {
     });
   }
 
+  const reportReviewNote =
+    normalizeReviewNote(input.reviewNote) ??
+    (user.status === UserStatus.SUSPENDED
+      ? "Report resolved because the User was already suspended."
+      : "Report resolved by suspending the reported User.");
+
   await updateReportStatus({
     actorId: input.actorId,
+    auditAction: AuditAction.REPORT_RESOLVED,
     ipAddress: input.ipAddress,
-    note:
-      user.status === UserStatus.SUSPENDED
-        ? "Report resolved because the User was already suspended."
-        : "Report resolved by suspending the reported User.",
+    note: reportReviewNote,
     report: input.report,
     status: ReportStatus.RESOLVED,
     transaction: input.transaction,
@@ -377,3 +420,8 @@ type ReportSnapshot = {
   targetId: string;
   targetType: ReportTargetType;
 };
+
+function normalizeReviewNote(note: string | null | undefined) {
+  const trimmed = note?.trim();
+  return trimmed ? trimmed : null;
+}

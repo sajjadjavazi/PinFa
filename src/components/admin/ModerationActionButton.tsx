@@ -105,6 +105,7 @@ export function ModerationActionPanel({
             type="button"
             disabled={Boolean(isSubmitting)}
             onClick={() => submitAction(action)}
+            aria-label={`${labels[action]} Pin`}
             className={`h-10 rounded-md px-4 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClasses[action]}`}
           >
             {isSubmitting === action ? "Working..." : labels[action]}

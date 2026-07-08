@@ -21,58 +21,67 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const { id: pinId } = await context.params;
-  const pin = await prisma.pin.findFirst({
-    where: {
-      id: pinId,
-      status: "PUBLISHED",
-    },
-    select: {
-      id: true,
-      title: true,
-    },
-  });
-
-  if (!pin) {
-    return NextResponse.json(
-      { errors: { pin: "Only published Pins can be shared." } },
-      { status: 404 },
-    );
-  }
-
-  const url = new URL(`/pins/${pinId}`, request.nextUrl.origin).toString();
-  const updatedPin = await prisma.$transaction(async (transaction) => {
-    const updated = await transaction.pin.update({
+  try {
+    const pin = await prisma.pin.findFirst({
       where: {
         id: pinId,
-      },
-      data: {
-        shareCount: {
-          increment: 1,
-        },
+        status: "PUBLISHED",
       },
       select: {
-        shareCount: true,
+        id: true,
+        title: true,
       },
     });
 
-    await transaction.userEvent.create({
-      data: {
-        userId: currentUser.id,
-        eventType: "SHARE_PIN",
-        targetType: "PIN",
-        targetId: pinId,
-        metadataJson: {
-          url,
+    if (!pin) {
+      return NextResponse.json(
+        { errors: { pin: "Only published Pins can be shared." } },
+        { status: 404 },
+      );
+    }
+
+    const url = new URL(`/pins/${pinId}`, request.nextUrl.origin).toString();
+    const updatedPin = await prisma.$transaction(async (transaction) => {
+      const updated = await transaction.pin.update({
+        where: {
+          id: pinId,
         },
-      },
+        data: {
+          shareCount: {
+            increment: 1,
+          },
+        },
+        select: {
+          shareCount: true,
+        },
+      });
+
+      await transaction.userEvent.create({
+        data: {
+          eventType: "SHARE_PIN",
+          metadataJson: {
+            url,
+          },
+          targetId: pinId,
+          targetType: "PIN",
+          userId: currentUser.id,
+        },
+      });
+
+      return updated;
     });
 
-    return updated;
-  });
+    return NextResponse.json({
+      shareCount: updatedPin.shareCount,
+      title: pin.title,
+      url,
+    });
+  } catch (error) {
+    console.error("Share Pin failed", error);
 
-  return NextResponse.json({
-    shareCount: updatedPin.shareCount,
-    title: pin.title,
-    url,
-  });
+    return NextResponse.json(
+      { errors: { share: "Share failed." } },
+      { status: 500 },
+    );
+  }
 }

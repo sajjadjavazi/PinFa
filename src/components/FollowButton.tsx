@@ -37,6 +37,7 @@ export function FollowButton({
       type="button"
       onClick={toggleFollow}
       disabled={isSubmitting}
+      aria-label={isFollowing ? "Unfollow user" : "Follow user"}
       className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
     >
       {isSubmitting ? "Saving..." : isFollowing ? "Following" : "Follow"}

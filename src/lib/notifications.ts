@@ -42,6 +42,7 @@ type NotificationRecord = Prisma.NotificationGetPayload<{
 export async function createNotification(
   input: {
     actorId?: string | null;
+    avoidDuplicateUnread?: boolean;
     message: string;
     targetId?: string | null;
     targetType?: string | null;
@@ -52,6 +53,23 @@ export async function createNotification(
 ) {
   if (input.actorId && input.actorId === input.userId) {
     return null;
+  }
+
+  if (input.avoidDuplicateUnread ?? true) {
+    const existingNotification = await client.notification.findFirst({
+      where: {
+        actorId: input.actorId ?? null,
+        isRead: false,
+        targetId: input.targetId ?? null,
+        targetType: input.targetType ?? null,
+        type: input.type,
+        userId: input.userId,
+      },
+    });
+
+    if (existingNotification) {
+      return existingNotification;
+    }
   }
 
   return client.notification.create({
@@ -84,6 +102,15 @@ export async function getNotificationsForUser(input: {
   return notifications.map(serializeNotification);
 }
 
+export async function getUnreadNotificationCount(userId: string) {
+  return prisma.notification.count({
+    where: {
+      isRead: false,
+      userId,
+    },
+  });
+}
+
 export async function getNotificationSummary(input: {
   recentTake?: number;
   userId: string;
@@ -96,12 +123,7 @@ export async function getNotificationSummary(input: {
           userId: input.userId,
         })
       : Promise.resolve([]),
-    prisma.notification.count({
-      where: {
-        isRead: false,
-        userId: input.userId,
-      },
-    }),
+    getUnreadNotificationCount(input.userId),
   ]);
 
   return {

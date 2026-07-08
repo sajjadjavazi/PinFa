@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { applySearchInterestSignal } from "@/lib/interest-signals";
-import { prisma } from "@/lib/prisma";
+import { canSearch, normalizeSearchQuery, recordSearchEvent } from "@/lib/search";
 
 export const runtime = "nodejs";
 
@@ -16,34 +15,25 @@ export async function POST(request: Request) {
   }
 
   const body = await readJson(request);
-  const query =
+  const query = normalizeSearchQuery(
     body && typeof body === "object" && "query" in body
       ? String(body.query).trim()
-      : "";
+      : "",
+  );
 
-  if (query.length < 2) {
+  if (!canSearch(query)) {
     return NextResponse.json(
       { errors: { query: "Search query must be at least 2 characters." } },
       { status: 400 },
     );
   }
 
-  await Promise.all([
-    prisma.userEvent.create({
-      data: {
-        userId: currentUser.id,
-        eventType: "SEARCH",
-        targetType: "SEARCH",
-        metadataJson: {
-          query,
-        },
-      },
-    }),
-    applySearchInterestSignal({
-      query,
-      userId: currentUser.id,
-    }),
-  ]);
+  await recordSearchEvent({
+    query,
+    source: "api",
+    type: "all",
+    userId: currentUser.id,
+  });
 
   return NextResponse.json({ recorded: true });
 }

@@ -1,6 +1,7 @@
 import { Prisma, ReportTargetType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { applyCategoryInterestSignal } from "@/lib/interest-signals";
 import { prisma } from "@/lib/prisma";
 import { readJsonBody, validateReportInput } from "@/lib/report-validation";
 
@@ -23,16 +24,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ errors: validation.errors }, { status: 400 });
   }
 
-  const targetCheck = await validateTarget(validation.data, currentUser.id);
-
-  if (!targetCheck.ok) {
-    return NextResponse.json(
-      { errors: targetCheck.errors },
-      { status: targetCheck.status },
-    );
-  }
-
   try {
+    const targetCheck = await validateTarget(validation.data, currentUser.id);
+
+    if (!targetCheck.ok) {
+      return NextResponse.json(
+        { errors: targetCheck.errors },
+        { status: targetCheck.status },
+      );
+    }
+
     const report = await prisma.$transaction(async (transaction) => {
       const createdReport = await transaction.report.create({
         data: {
@@ -64,19 +65,27 @@ export async function POST(request: Request) {
 
       await transaction.userEvent.create({
         data: {
-          userId: currentUser.id,
           eventType: "REPORT_PIN",
-          targetType: validation.data.targetType,
-          targetId: validation.data.targetId,
           metadataJson: {
             reason: validation.data.reason,
             reportId: createdReport.id,
           },
+          targetId: validation.data.targetId,
+          targetType: validation.data.targetType,
+          userId: currentUser.id,
         },
       });
 
       return createdReport;
     });
+
+    if (validation.data.targetType === ReportTargetType.PIN) {
+      await applyCategoryInterestSignal({
+        categoryId: targetCheck.pinCategoryId,
+        signal: "report",
+        userId: currentUser.id,
+      });
+    }
 
     return NextResponse.json({ report }, { status: 201 });
   } catch (error) {
@@ -91,7 +100,12 @@ export async function POST(request: Request) {
       );
     }
 
-    throw error;
+    console.error("Report creation failed", error);
+
+    return NextResponse.json(
+      { errors: { report: "Report failed." } },
+      { status: 500 },
+    );
   }
 }
 
@@ -102,7 +116,7 @@ async function validateTarget(
   },
   reporterUserId: string,
 ): Promise<
-  | { ok: true }
+  | { ok: true; pinCategoryId?: string | null }
   | {
       ok: false;
       errors: Record<string, string>;
@@ -116,6 +130,7 @@ async function validateTarget(
         status: "PUBLISHED",
       },
       select: {
+        categoryId: true,
         id: true,
         ownerUserId: true,
       },
@@ -129,7 +144,7 @@ async function validateTarget(
       };
     }
 
-    return { ok: true };
+    return { ok: true, pinCategoryId: pin.categoryId };
   }
 
   if (input.targetType === ReportTargetType.USER) {

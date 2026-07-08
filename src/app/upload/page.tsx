@@ -1,9 +1,19 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { PinUploadForm } from "@/components/PinUploadForm";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getUploadLimits } from "@/lib/upload-settings";
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Upload a Pin",
+};
 
 export default async function UploadPage() {
   const user = await getCurrentUser();
@@ -29,7 +39,9 @@ export default async function UploadPage() {
   ]);
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-3xl content-start gap-8 px-6 py-10">
+    <>
+    <AppHeader currentUser={user} />
+    <main className="mx-auto grid min-h-screen w-full max-w-3xl content-start gap-8 px-4 py-8 sm:px-6">
       <section className="flex flex-col gap-4 border-b border-neutral-200 pb-8 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium uppercase text-neutral-500">PinFa</p>
@@ -37,8 +49,8 @@ export default async function UploadPage() {
             Upload a Pin
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-600">
-            Uploaded images are stored for review and stay out of public areas
-            until moderation is added.
+            Uploaded images are processed and stay out of public areas until
+            moderation approves them.
           </p>
         </div>
         <Link
@@ -55,5 +67,6 @@ export default async function UploadPage() {
         allowedMimeTypes={uploadLimits.allowedMimeTypes}
       />
     </main>
+    </>
   );
 }

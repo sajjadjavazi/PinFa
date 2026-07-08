@@ -1,6 +1,6 @@
 import { AdProvider as PrismaAdProvider } from "@prisma/client";
 import type { AdProvider } from "@/lib/ads/ad-provider";
-import { YektanetAdProvider } from "@/lib/ads/yektanet-ad-provider";
+import { YektanetAdProvider } from "@/lib/ads/yektanet-provider";
 
 const yektanetProvider = new YektanetAdProvider();
 

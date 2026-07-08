@@ -12,6 +12,8 @@ type BoardCardProps = {
       imageThumbnailUrl: string | null;
       imageFeedUrl: string | null;
       imageDetailUrl: string | null;
+      width?: number | null;
+      height?: number | null;
     } | null;
   };
 };
@@ -31,6 +33,8 @@ export function BoardCard({ board }: BoardCardProps) {
         <img
           src={imageUrl}
           alt={board.coverPin?.title ?? board.title}
+          width={board.coverPin?.width ?? undefined}
+          height={board.coverPin?.height ?? undefined}
           loading="lazy"
           decoding="async"
           className="aspect-[4/3] w-full rounded-md bg-neutral-100 object-cover"

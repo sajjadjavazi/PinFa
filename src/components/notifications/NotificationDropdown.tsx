@@ -62,7 +62,7 @@ export function NotificationDropdown({
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 z-20 mt-2 grid w-80 gap-3 rounded-md border border-neutral-200 bg-white p-3 text-sm shadow-lg">
+        <div className="absolute right-0 z-20 mt-2 grid w-80 max-w-[calc(100vw-1.5rem)] gap-3 rounded-md border border-neutral-200 bg-white p-3 text-sm shadow-lg">
           <div className="flex items-center justify-between gap-3">
             <p className="font-semibold text-neutral-950">Notifications</p>
             {unreadCount > 0 ? (
@@ -134,4 +134,3 @@ function NotificationPreview({
     </Link>
   );
 }
-

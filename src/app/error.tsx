@@ -15,7 +15,8 @@ export default function Error({
           PinFa could not load this page.
         </h1>
         <p className="text-sm leading-6 text-neutral-600">
-          {error.message || "Please try again."}
+          Please try again. If this keeps happening, check the server logs for
+          the request details.
         </p>
         <button
           type="button"

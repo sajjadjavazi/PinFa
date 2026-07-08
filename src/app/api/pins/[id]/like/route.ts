@@ -24,27 +24,26 @@ export async function POST(_request: NextRequest, context: RouteContext) {
   }
 
   const { id: pinId } = await context.params;
-  const pin = await prisma.pin.findFirst({
-    where: {
-      id: pinId,
-      status: "PUBLISHED",
-    },
-    select: {
-      id: true,
-      categoryId: true,
-      ownerUserId: true,
-      title: true,
-    },
-  });
-
-  if (!pin) {
-    return NextResponse.json(
-      { errors: { pin: "Only published Pins can be liked." } },
-      { status: 404 },
-    );
-  }
-
   try {
+    const pin = await prisma.pin.findFirst({
+      where: {
+        id: pinId,
+        status: "PUBLISHED",
+      },
+      select: {
+        categoryId: true,
+        id: true,
+        ownerUserId: true,
+      },
+    });
+
+    if (!pin) {
+      return NextResponse.json(
+        { errors: { pin: "Only published Pins can be liked." } },
+        { status: 404 },
+      );
+    }
+
     const result = await prisma.$transaction(async (transaction) => {
       await transaction.like.create({
         data: {
@@ -69,16 +68,17 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
       await transaction.userEvent.create({
         data: {
-          userId: currentUser.id,
           eventType: "LIKE_PIN",
-          targetType: "PIN",
           targetId: pinId,
+          targetType: "PIN",
+          userId: currentUser.id,
         },
       });
+
       await createNotification(
         {
           actorId: currentUser.id,
-          message: `${currentUser.displayName} liked your Pin "${pin.title}".`,
+          message: `${currentUser.displayName} liked your Pin.`,
           targetId: pinId,
           targetType: "PIN",
           type: NotificationType.PIN_LIKED,
@@ -120,7 +120,12 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       );
     }
 
-    throw error;
+    console.error("Like Pin failed", error);
+
+    return NextResponse.json(
+      { errors: { like: "Like failed." } },
+      { status: 500 },
+    );
   }
 }
 
@@ -135,16 +140,64 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   }
 
   const { id: pinId } = await context.params;
-  const result = await prisma.$transaction(async (transaction) => {
-    const deleted = await transaction.like.deleteMany({
+  try {
+    const pin = await prisma.pin.findFirst({
       where: {
-        userId: currentUser.id,
-        pinId,
+        id: pinId,
+        status: "PUBLISHED",
+      },
+      select: {
+        id: true,
+        likeCount: true,
       },
     });
 
-    if (deleted.count === 0) {
-      const pin = await transaction.pin.findUnique({
+    if (!pin) {
+      return NextResponse.json(
+        { errors: { pin: "Only published Pins can be unliked." } },
+        { status: 404 },
+      );
+    }
+
+    const result = await prisma.$transaction(async (transaction) => {
+      const deleted = await transaction.like.deleteMany({
+        where: {
+          pinId,
+          userId: currentUser.id,
+        },
+      });
+
+      if (deleted.count === 0) {
+        return {
+          changed: false,
+          likeCount: pin.likeCount,
+        };
+      }
+
+      await transaction.pin.updateMany({
+        where: {
+          id: pinId,
+          likeCount: {
+            gt: 0,
+          },
+        },
+        data: {
+          likeCount: {
+            decrement: 1,
+          },
+        },
+      });
+
+      await transaction.userEvent.create({
+        data: {
+          eventType: "UNLIKE_PIN",
+          targetId: pinId,
+          targetType: "PIN",
+          userId: currentUser.id,
+        },
+      });
+
+      const updatedPin = await transaction.pin.findUnique({
         where: {
           id: pinId,
         },
@@ -154,56 +207,24 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       });
 
       return {
-        changed: false,
-        likeCount: pin?.likeCount ?? 0,
+        changed: true,
+        likeCount: updatedPin?.likeCount ?? 0,
       };
-    }
-
-    const updated = await transaction.pin.updateMany({
-      where: {
-        id: pinId,
-        likeCount: {
-          gt: 0,
-        },
-      },
-      data: {
-        likeCount: {
-          decrement: 1,
-        },
-      },
     });
 
-    const pin = await transaction.pin.findUnique({
-      where: {
-        id: pinId,
-      },
-      select: {
-        likeCount: true,
-      },
+    return NextResponse.json({
+      changed: result.changed,
+      liked: false,
+      likeCount: result.likeCount,
     });
+  } catch (error) {
+    console.error("Unlike Pin failed", error);
 
-    if (updated.count > 0) {
-      await transaction.userEvent.create({
-        data: {
-          userId: currentUser.id,
-          eventType: "UNLIKE_PIN",
-          targetType: "PIN",
-          targetId: pinId,
-        },
-      });
-    }
-
-    return {
-      changed: true,
-      likeCount: pin?.likeCount ?? 0,
-    };
-  });
-
-  return NextResponse.json({
-    liked: false,
-    changed: result.changed,
-    likeCount: result.likeCount,
-  });
+    return NextResponse.json(
+      { errors: { like: "Unlike failed." } },
+      { status: 500 },
+    );
+  }
 }
 
 function isUniqueConstraintError(error: unknown) {

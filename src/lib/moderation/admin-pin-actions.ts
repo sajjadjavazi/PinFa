@@ -1,9 +1,11 @@
 import {
   AuditAction,
   ModerationDecision,
+  NotificationType,
   PinStatus,
   Prisma,
 } from "@prisma/client";
+import { createNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 export type AdminPinModerationAction = "approve" | "reject" | "remove";
@@ -15,6 +17,7 @@ type ActionConfig = {
   defaultNote: string;
   label: string;
   nextStatus: PinStatus;
+  notificationType?: NotificationType;
 };
 
 const ACTION_CONFIG: Record<AdminPinModerationAction, ActionConfig> = {
@@ -25,6 +28,7 @@ const ACTION_CONFIG: Record<AdminPinModerationAction, ActionConfig> = {
     decision: ModerationDecision.MANUALLY_APPROVED,
     label: "approved",
     nextStatus: PinStatus.PUBLISHED,
+    notificationType: NotificationType.PIN_APPROVED,
   },
   reject: {
     allowedStatuses: [PinStatus.PENDING_REVIEW],
@@ -33,6 +37,7 @@ const ACTION_CONFIG: Record<AdminPinModerationAction, ActionConfig> = {
     decision: ModerationDecision.MANUALLY_REJECTED,
     label: "rejected",
     nextStatus: PinStatus.REJECTED,
+    notificationType: NotificationType.PIN_REJECTED,
   },
   remove: {
     allowedStatuses: [PinStatus.PUBLISHED],
@@ -70,6 +75,7 @@ export async function applyAdminPinModerationAction(input: {
       },
       select: {
         id: true,
+        ownerUserId: true,
         status: true,
         moderationResults: {
           orderBy: {
@@ -153,6 +159,23 @@ export async function applyAdminPinModerationAction(input: {
         ipAddress: input.ipAddress,
       },
     });
+
+    if (config.notificationType) {
+      await createNotification(
+        {
+          actorId: input.actorId,
+          message:
+            config.notificationType === NotificationType.PIN_APPROVED
+              ? "Your Pin was approved."
+              : "Your Pin was rejected.",
+          targetId: input.pinId,
+          targetType: "PIN",
+          type: config.notificationType,
+          userId: pin.ownerUserId,
+        },
+        transaction,
+      );
+    }
 
     return {
       decision: config.decision,

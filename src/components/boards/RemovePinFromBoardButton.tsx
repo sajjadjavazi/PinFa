@@ -45,6 +45,7 @@ export function RemovePinFromBoardButton({
         type="button"
         onClick={removePin}
         disabled={isSubmitting}
+        aria-label="Remove Pin from Board"
         className="h-9 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "Removing..." : "Remove"}

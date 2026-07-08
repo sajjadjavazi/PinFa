@@ -1,8 +1,17 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { AdminLogoutButton } from "@/components/admin/AdminLogoutButton";
 import { requireAdminPageUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Admin",
+};
 
 export default async function AdminLayout({
   children,
@@ -31,6 +40,12 @@ export default async function AdminLayout({
               Moderation
             </Link>
             <Link
+              href="/admin/reports"
+              className="rounded-md border border-neutral-300 px-4 py-2 text-neutral-800 transition hover:border-neutral-950"
+            >
+              Reports
+            </Link>
+            <Link
               href="/profile"
               className="rounded-md border border-neutral-300 px-4 py-2 text-neutral-800 transition hover:border-neutral-950"
             >
@@ -40,7 +55,9 @@ export default async function AdminLayout({
           </nav>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-6 py-8">{children}</main>
+      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+        {children}
+      </main>
     </div>
   );
 }

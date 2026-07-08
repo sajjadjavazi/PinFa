@@ -6,8 +6,11 @@ import { FormEvent, useState } from "react";
 type ReportTargetType = "PIN" | "USER" | "BOARD";
 
 type ReportModalProps = {
+  buttonAriaLabel?: string;
   buttonLabel?: string;
+  buttonClassName?: string;
   isAuthenticated: boolean;
+  loginClassName?: string;
   loginLabel?: string;
   targetId: string;
   targetType: ReportTargetType;
@@ -28,8 +31,11 @@ const reportReasons = [
 ];
 
 export function ReportModal({
+  buttonAriaLabel,
   buttonLabel = "Report",
+  buttonClassName = "h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950",
   isAuthenticated,
+  loginClassName = "grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950",
   loginLabel = "Log in to report",
   targetId,
   targetType,
@@ -43,7 +49,7 @@ export function ReportModal({
     return (
       <Link
         href="/auth/login"
-        className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
+        className={loginClassName}
       >
         {loginLabel}
       </Link>
@@ -98,7 +104,8 @@ export function ReportModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
+        aria-label={buttonAriaLabel ?? buttonLabel}
+        className={buttonClassName}
       >
         {buttonLabel}
       </button>
@@ -147,8 +154,13 @@ export function ReportModal({
                   <select
                     id={`${targetType}-${targetId}-reason`}
                     name="reason"
+                    defaultValue=""
+                    required
                     className="h-11 rounded-md border border-neutral-300 bg-white px-3 outline-none transition focus:border-neutral-950"
                   >
+                    <option value="" disabled>
+                      Select a reason
+                    </option>
                     {reportReasons.map((reason) => (
                       <option key={reason.value} value={reason.value}>
                         {reason.label}

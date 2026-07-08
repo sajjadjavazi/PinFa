@@ -34,6 +34,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   try {
     const result = await savePublishedPinToBoard({
+      actorDisplayName: currentUser.displayName,
       boardId,
       pinId,
       userId: currentUser.id,

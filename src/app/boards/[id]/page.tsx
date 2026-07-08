@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { BoardFollowButton } from "@/components/boards/BoardFollowButton";
 import { RemovePinFromBoardButton } from "@/components/boards/RemovePinFromBoardButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
@@ -14,6 +16,82 @@ type BoardDetailPageProps = {
     id: string;
   }>;
 };
+
+export async function generateMetadata({
+  params,
+}: BoardDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const board = await prisma.board.findFirst({
+    where: {
+      id,
+      visibility: "PUBLIC",
+    },
+    select: {
+      coverPin: {
+        select: {
+          imageFeedUrl: true,
+          imageThumbnailUrl: true,
+          height: true,
+          status: true,
+          title: true,
+          width: true,
+        },
+      },
+      description: true,
+      id: true,
+      owner: {
+        select: {
+          displayName: true,
+          username: true,
+        },
+      },
+      pinCount: true,
+      title: true,
+    },
+  });
+
+  if (!board) {
+    return {
+      robots: {
+        follow: false,
+        index: false,
+      },
+      title: "Board not available",
+    };
+  }
+
+  const description =
+    board.description?.trim() ||
+    `${board.title} is a public PinFa Board by ${board.owner.displayName} with ${board.pinCount} Pins.`;
+  const coverUrl =
+    board.coverPin?.status === "PUBLISHED"
+      ? board.coverPin.imageFeedUrl ?? board.coverPin.imageThumbnailUrl
+      : null;
+
+  return {
+    alternates: {
+      canonical: `/boards/${board.id}`,
+    },
+    description: truncateDescription(description),
+    openGraph: {
+      description: truncateDescription(description),
+      images: coverUrl
+        ? [
+            {
+              alt: board.coverPin?.title ?? board.title,
+              height: board.coverPin?.height ?? undefined,
+              url: coverUrl,
+              width: board.coverPin?.width ?? undefined,
+            },
+          ]
+        : undefined,
+      title: board.title,
+      type: "website",
+      url: `/boards/${board.id}`,
+    },
+    title: board.title,
+  };
+}
 
 export default async function BoardDetailPage({ params }: BoardDetailPageProps) {
   const { id } = await params;
@@ -32,6 +110,8 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
             imageThumbnailUrl: true,
             imageFeedUrl: true,
             imageDetailUrl: true,
+            width: true,
+            height: true,
           },
         },
         pins: {
@@ -53,6 +133,8 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
                 imageThumbnailUrl: true,
                 imageFeedUrl: true,
                 imageDetailUrl: true,
+                width: true,
+                height: true,
                 saveCount: true,
                 owner: {
                   select: {
@@ -99,12 +181,16 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
     board.coverPin?.imageDetailUrl;
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-10 px-6 py-10">
+    <>
+    <AppHeader currentUser={currentUser} />
+    <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="grid gap-6 border-b border-neutral-200 pb-8 lg:grid-cols-[260px_minmax(0,1fr)]">
         {coverUrl ? (
           <img
             src={coverUrl}
             alt={`${board.title} cover`}
+            width={board.coverPin?.width ?? undefined}
+            height={board.coverPin?.height ?? undefined}
             loading="eager"
             decoding="async"
             className="aspect-[4/3] w-full rounded-md bg-neutral-100 object-cover"
@@ -215,6 +301,7 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
         )}
       </section>
     </main>
+    </>
   );
 }
 
@@ -226,9 +313,12 @@ function PinImage({
     imageThumbnailUrl: string | null;
     imageFeedUrl: string | null;
     imageDetailUrl: string | null;
+    width: number | null;
+    height: number | null;
   };
 }) {
   const imageUrl = pin.imageFeedUrl ?? pin.imageThumbnailUrl ?? pin.imageDetailUrl;
+  const aspectRatio = pin.width && pin.height ? `${pin.width} / ${pin.height}` : "4 / 3";
 
   if (!imageUrl) {
     return (
@@ -242,9 +332,16 @@ function PinImage({
     <img
       src={imageUrl}
       alt={pin.title}
+      width={pin.width ?? undefined}
+      height={pin.height ?? undefined}
       loading="lazy"
       decoding="async"
       className="aspect-[4/3] w-full rounded-md bg-neutral-100 object-cover"
+      style={{ aspectRatio }}
     />
   );
+}
+
+function truncateDescription(value: string) {
+  return value.length > 160 ? `${value.slice(0, 157).trimEnd()}...` : value;
 }

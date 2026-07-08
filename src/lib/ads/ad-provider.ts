@@ -32,6 +32,10 @@ export type AdProviderRenderInput = {
   viewerUserId?: string | null;
 };
 
+export type AdProviderAvailabilityInput = {
+  slot: AdSlotForProvider;
+};
+
 export type AdProviderTrackInput = {
   adReference: string;
   slot: AdSlotForProvider;
@@ -48,6 +52,7 @@ export type AdProviderFailureInput = {
 export interface AdProvider {
   readonly name: PrismaAdProvider;
   handleFailure?(input: AdProviderFailureInput): Promise<void>;
+  isEnabled?(input: AdProviderAvailabilityInput): boolean;
   renderAd(input: AdProviderRenderInput): Promise<FeedAdItem | null>;
   trackClick?(input: AdProviderTrackInput): Promise<void>;
   trackImpression?(input: AdProviderTrackInput): Promise<void>;

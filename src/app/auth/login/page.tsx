@@ -1,4 +1,20 @@
+import type { Metadata } from "next";
 import { LoginForm } from "./LoginForm";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/auth/login",
+  },
+  description: "Log in to PinFa to save Pins, manage Boards, and view notifications.",
+  openGraph: {
+    description:
+      "Log in to PinFa to save Pins, manage Boards, and view notifications.",
+    title: "Log in to PinFa",
+    type: "website",
+    url: "/auth/login",
+  },
+  title: "Log In",
+};
 
 export default function LoginPage() {
   return (

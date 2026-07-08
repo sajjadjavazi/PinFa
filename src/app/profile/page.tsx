@@ -1,12 +1,21 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { BoardCard } from "@/components/boards/BoardCard";
-import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ProfileEditForm } from "@/components/ProfileEditForm";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotificationSummary } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
+
+export const metadata: Metadata = {
+  robots: {
+    follow: false,
+    index: false,
+  },
+  title: "Your Profile",
+};
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -54,6 +63,8 @@ export default async function ProfilePage() {
             imageThumbnailUrl: true,
             imageFeedUrl: true,
             imageDetailUrl: true,
+            width: true,
+            height: true,
           },
         },
       },
@@ -64,7 +75,9 @@ export default async function ProfilePage() {
   ]);
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-5xl gap-10 px-6 py-10">
+    <>
+    <AppHeader currentUser={user} notificationSummary={notificationSummary} />
+    <main className="mx-auto grid min-h-screen w-full max-w-5xl gap-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="flex flex-col gap-6 border-b border-neutral-200 pb-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
           <ProfileAvatar avatarUrl={user.avatarUrl} displayName={user.displayName} />
@@ -80,10 +93,6 @@ export default async function ProfilePage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-3">
-          <NotificationDropdown
-            initialNotifications={notificationSummary.recentNotifications}
-            initialUnreadCount={notificationSummary.unreadCount}
-          />
           <Link
             href={`/users/${user.username}`}
             className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
@@ -191,5 +200,6 @@ export default async function ProfilePage() {
         )}
       </section>
     </main>
+    </>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FeedAdCard } from "@/components/feed/FeedAdCard";
 import { FeedPinCard } from "@/components/feed/FeedPinCard";
+import { NativeAdCard } from "@/components/feed/NativeAdCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { FeedItem, HomeFeedPage } from "@/lib/feed";
 
@@ -26,8 +26,8 @@ export function HomeFeed({
   isAuthenticated,
 }: HomeFeedProps) {
   const [items, setItems] = useState(initialPage.items);
-  const [nextCursor, setNextCursor] = useState(initialPage.next_cursor);
-  const [hasMore, setHasMore] = useState(initialPage.has_more);
+  const [nextCursor, setNextCursor] = useState(initialPage.nextCursor);
+  const [hasMore, setHasMore] = useState(initialPage.hasMore);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -42,7 +42,7 @@ export function HomeFeed({
 
     try {
       const response = await fetch(
-        `/feed/home?cursor=${encodeURIComponent(nextCursor)}&limit=24`,
+        `/api/feed/home?cursor=${encodeURIComponent(nextCursor)}&limit=24`,
       );
 
       if (!response.ok) {
@@ -53,8 +53,8 @@ export function HomeFeed({
       const page = (await response.json()) as HomeFeedPage;
 
       setItems((currentItems) => mergeFeedItems(currentItems, page.items));
-      setNextCursor(page.next_cursor);
-      setHasMore(page.has_more);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
     } catch {
       setError("Feed could not load more Pins.");
     } finally {
@@ -117,20 +117,16 @@ export function HomeFeed({
   }
 
   return (
-    <section className="grid gap-6">
-      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
-        {items.map((item) =>
-          item.type === "PIN" ? (
-            <FeedPinCard
-              key={getFeedItemKey(item)}
-              boards={boards}
-              isAuthenticated={isAuthenticated}
-              pin={item.pin}
-            />
-          ) : (
-            <FeedAdCard key={getFeedItemKey(item)} ad={item.ad} />
-          ),
-        )}
+    <section className="grid gap-5">
+      <div className="columns-2 gap-2 sm:columns-3 lg:columns-4 2xl:columns-5">
+        {items.map((item) => (
+          <FeedItemCard
+            key={item.id}
+            boards={boards}
+            isAuthenticated={isAuthenticated}
+            item={item}
+          />
+        ))}
       </div>
 
       {isLoading ? <FeedSkeletonGrid /> : null}
@@ -167,36 +163,59 @@ export function HomeFeed({
   );
 }
 
-function mergeFeedItems(currentItems: FeedItem[], nextItems: FeedItem[]) {
-  const seen = new Set(currentItems.map(getFeedItemKey));
+function mergeFeedItems(
+  currentItems: FeedItem[],
+  nextItems: FeedItem[],
+) {
+  const seen = new Set(currentItems.map((item) => item.id));
   const merged = [...currentItems];
 
   for (const item of nextItems) {
-    const key = getFeedItemKey(item);
-
-    if (!seen.has(key)) {
+    if (!seen.has(item.id)) {
       merged.push(item);
-      seen.add(key);
+      seen.add(item.id);
     }
   }
 
   return merged;
 }
 
-function getFeedItemKey(item: FeedItem) {
-  return `${item.type}:${item.id}`;
+function FeedItemCard({
+  boards,
+  isAuthenticated,
+  item,
+}: {
+  boards: BoardOption[];
+  isAuthenticated: boolean;
+  item: FeedItem;
+}) {
+  if (item.type === "PIN") {
+    return (
+      <FeedPinCard
+        boards={boards}
+        isAuthenticated={isAuthenticated}
+        pin={item.pin}
+      />
+    );
+  }
+
+  if (item.type === "AD") {
+    return <NativeAdCard ad={item.ad} />;
+  }
+
+  return null;
 }
 
 function FeedSkeletonGrid() {
   return (
     <div
-      className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5"
       aria-label="Loading more Pins"
     >
-      {Array.from({ length: 4 }).map((_, index) => (
+      {Array.from({ length: 10 }).map((_, index) => (
         <div
           key={index}
-          className="h-64 animate-pulse rounded-md bg-neutral-100"
+          className="h-48 animate-pulse rounded-lg bg-neutral-100 sm:h-56"
         />
       ))}
     </div>

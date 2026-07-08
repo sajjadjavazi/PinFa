@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { AppHeader } from "@/components/AppHeader";
 import { SaveToBoardForm } from "@/components/boards/SaveToBoardForm";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { PinSocialActions } from "@/components/social/PinSocialActions";
@@ -26,6 +27,11 @@ export async function generateMetadata({
       status: "PUBLISHED",
     },
     select: {
+      category: {
+        select: {
+          name: true,
+        },
+      },
       description: true,
       height: true,
       imageDetailUrl: true,
@@ -54,11 +60,16 @@ export async function generateMetadata({
 
   const description =
     pin.description?.trim() ||
-    `A visual idea by ${pin.owner.displayName} on PinFa.`;
+    `A visual idea by ${pin.owner.displayName}${
+      pin.category ? ` in ${pin.category.name}` : ""
+    } on PinFa.`;
   const imageUrl =
     pin.imageDetailUrl ?? pin.imageFeedUrl ?? pin.imageThumbnailUrl ?? undefined;
 
   return {
+    alternates: {
+      canonical: `/pins/${id}`,
+    },
     title: pin.title,
     description: truncateDescription(description),
     openGraph: {
@@ -75,6 +86,7 @@ export async function generateMetadata({
         : undefined,
       title: pin.title,
       type: "article",
+      url: `/pins/${id}`,
     },
     twitter: {
       card: imageUrl ? "summary_large_image" : "summary",
@@ -187,7 +199,9 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
   }
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-6 py-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+    <>
+    <AppHeader currentUser={currentUser} />
+    <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:px-8">
       <section>
         {imageUrl ? (
           <img
@@ -304,6 +318,7 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
         </dl>
       </aside>
     </main>
+    </>
   );
 }
 
