@@ -2,17 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type BoardFollowButtonProps = {
   boardId: string;
   initialFollowing: boolean;
+  locale: Locale;
 };
 
 export function BoardFollowButton({
   boardId,
   initialFollowing,
+  locale,
 }: BoardFollowButtonProps) {
   const router = useRouter();
+  const dictionary = getDictionary(locale);
   const [isFollowing, setIsFollowing] = useState(initialFollowing);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,7 +33,7 @@ export function BoardFollowButton({
     setIsSubmitting(false);
 
     if (!response.ok) {
-      setError(result.errors?.board ?? result.errors?.auth ?? "Action failed.");
+      setError(result.errors?.board ?? result.errors?.auth ?? t(dictionary, "board.followFailed"));
       return;
     }
 
@@ -42,10 +47,16 @@ export function BoardFollowButton({
         type="button"
         onClick={toggleFollow}
         disabled={isSubmitting}
-        aria-label={isFollowing ? "Unfollow Board" : "Follow Board"}
+        aria-label={
+          isFollowing ? t(dictionary, "board.unfollowBoard") : t(dictionary, "board.followBoard")
+        }
         className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSubmitting ? "Updating..." : isFollowing ? "Following" : "Follow Board"}
+        {isSubmitting
+          ? t(dictionary, "board.updating")
+          : isFollowing
+            ? t(dictionary, "board.following")
+            : t(dictionary, "board.followBoard")}
       </button>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>

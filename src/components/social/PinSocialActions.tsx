@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ReportModal } from "@/components/social/ReportModal";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type PinSocialActionsProps = {
   initialLiked: boolean;
@@ -11,6 +13,7 @@ type PinSocialActionsProps = {
   initialReportCount: number;
   initialShareCount: number;
   isAuthenticated: boolean;
+  locale: Locale;
   pinId: string;
 };
 
@@ -20,9 +23,11 @@ export function PinSocialActions({
   initialReportCount,
   initialShareCount,
   isAuthenticated,
+  locale,
   pinId,
 }: PinSocialActionsProps) {
   const router = useRouter();
+  const dictionary = getDictionary(locale);
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
   const [shareCount, setShareCount] = useState(initialShareCount);
@@ -43,12 +48,12 @@ export function PinSocialActions({
         });
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
-        setMessage("Link copied.");
+        setMessage(t(dictionary, "social.linkCopied"));
       } else {
         setMessage(url);
       }
     } catch {
-      setMessage("Share canceled.");
+      setMessage(t(dictionary, "social.shareCanceled"));
     } finally {
       setIsSharing(false);
     }
@@ -58,23 +63,23 @@ export function PinSocialActions({
     return (
       <div className="grid gap-3 rounded-md border border-neutral-200 p-4">
         <p className="text-sm text-neutral-600">
-          Log in to like or report this Pin. You can copy the public link now.
+          {t(dictionary, "social.loginPrompt")}
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <button
             type="button"
             onClick={copyPublicLink}
             disabled={isSharing}
-            aria-label="Share Pin"
+            aria-label={t(dictionary, "social.share")}
             className="h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSharing ? "Sharing..." : "Share"}
+            {isSharing ? t(dictionary, "social.sharing") : t(dictionary, "social.share")}
           </button>
           <Link
             href="/auth/login"
             className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
           >
-            Log in
+            {t(dictionary, "auth.login")}
           </Link>
         </div>
         {message ? <p className="text-sm text-neutral-600">{message}</p> : null}
@@ -101,7 +106,7 @@ export function PinSocialActions({
     }
 
     if (!response.ok) {
-      setMessage(result.errors?.pin ?? result.errors?.auth ?? "Action failed.");
+      setMessage(result.errors?.pin ?? result.errors?.auth ?? t(dictionary, "common.actionFailed"));
       return;
     }
 
@@ -122,7 +127,7 @@ export function PinSocialActions({
     setIsSharing(false);
 
     if (!response.ok) {
-      setMessage(result.errors?.pin ?? result.errors?.auth ?? "Share failed.");
+      setMessage(result.errors?.pin ?? result.errors?.auth ?? t(dictionary, "social.shareFailed"));
       return;
     }
 
@@ -136,12 +141,12 @@ export function PinSocialActions({
         });
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(result.url);
-        setMessage("Link copied.");
+        setMessage(t(dictionary, "social.linkCopied"));
       } else {
         setMessage(result.url);
       }
     } catch {
-      setMessage("Share canceled.");
+      setMessage(t(dictionary, "social.shareCanceled"));
     }
 
     router.refresh();
@@ -152,15 +157,15 @@ export function PinSocialActions({
       <div className="grid grid-cols-3 gap-3 text-center text-sm">
         <div>
           <p className="font-semibold text-neutral-950">{likeCount}</p>
-          <p className="text-neutral-500">Likes</p>
+          <p className="text-neutral-500">{t(dictionary, "social.likes")}</p>
         </div>
         <div>
           <p className="font-semibold text-neutral-950">{shareCount}</p>
-          <p className="text-neutral-500">Shares</p>
+          <p className="text-neutral-500">{t(dictionary, "social.shares")}</p>
         </div>
         <div>
           <p className="font-semibold text-neutral-950">{initialReportCount}</p>
-          <p className="text-neutral-500">Reports</p>
+          <p className="text-neutral-500">{t(dictionary, "social.reports")}</p>
         </div>
       </div>
 
@@ -169,23 +174,30 @@ export function PinSocialActions({
           type="button"
           onClick={toggleLike}
           disabled={isLiking}
-          aria-label={isLiked ? "Unlike Pin" : "Like Pin"}
+          aria-label={
+            isLiked ? t(dictionary, "social.unlikePin") : t(dictionary, "social.likePin")
+          }
           className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
         >
-          {isLiking ? "Saving..." : isLiked ? "Unlike" : "Like"}
+          {isLiking
+            ? t(dictionary, "common.saving")
+            : isLiked
+              ? t(dictionary, "social.unlike")
+              : t(dictionary, "social.like")}
         </button>
         <button
           type="button"
           onClick={sharePin}
           disabled={isSharing}
-          aria-label="Share Pin"
+          aria-label={t(dictionary, "social.share")}
           className="h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSharing ? "Sharing..." : "Share"}
+          {isSharing ? t(dictionary, "social.sharing") : t(dictionary, "social.share")}
         </button>
         <ReportModal
-          buttonLabel="Report"
+          buttonLabel={t(dictionary, "report.report")}
           isAuthenticated={isAuthenticated}
+          locale={locale}
           targetId={pinId}
           targetType="PIN"
         />

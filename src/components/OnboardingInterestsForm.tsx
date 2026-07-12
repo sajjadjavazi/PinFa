@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type CategoryOption = {
   id: string;
@@ -12,13 +14,16 @@ type CategoryOption = {
 type OnboardingInterestsFormProps = {
   categories: CategoryOption[];
   initialSelectedIds: string[];
+  locale: Locale;
 };
 
 export function OnboardingInterestsForm({
   categories,
   initialSelectedIds,
+  locale,
 }: OnboardingInterestsFormProps) {
   const router = useRouter();
+  const dictionary = getDictionary(locale);
   const [selectedIds, setSelectedIds] = useState(new Set(initialSelectedIds));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -60,7 +65,7 @@ export function OnboardingInterestsForm({
     setIsSubmitting(false);
 
     if (!response.ok) {
-      setError(result.errors?.categoryIds ?? "Could not save interests.");
+      setError(result.errors?.categoryIds ?? t(dictionary, "interests.saveFailed"));
       return;
     }
 
@@ -96,14 +101,18 @@ export function OnboardingInterestsForm({
       </div>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {saved ? <p className="text-sm text-green-700">Interests saved.</p> : null}
+      {saved ? (
+        <p className="text-sm text-green-700">{t(dictionary, "interests.saved")}</p>
+      ) : null}
 
       <button
         type="submit"
         disabled={isSubmitting}
         className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSubmitting ? "Saving..." : "Save interests"}
+        {isSubmitting
+          ? t(dictionary, "interests.saving")
+          : t(dictionary, "interests.saveInterests")}
       </button>
     </form>
   );

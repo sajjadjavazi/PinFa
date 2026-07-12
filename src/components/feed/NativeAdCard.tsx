@@ -2,12 +2,16 @@
 
 import { memo } from "react";
 import type { FeedAdItem } from "@/lib/ads/ad-provider";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type NativeAdCardProps = {
   ad: FeedAdItem;
+  locale: Locale;
 };
 
-function NativeAdCardComponent({ ad }: NativeAdCardProps) {
+function NativeAdCardComponent({ ad, locale }: NativeAdCardProps) {
+  const dictionary = getDictionary(locale);
   const href = getSafeExternalUrl(ad.clickUrl);
 
   function recordClick() {
@@ -56,14 +60,14 @@ function NativeAdCardComponent({ ad }: NativeAdCardProps) {
         ) : (
           <div className="grid aspect-[4/3] place-items-center rounded-lg bg-neutral-100 px-4 text-center">
             <span className="text-sm font-medium text-neutral-500">
-              Advertisement
+              {t(dictionary, "ads.fallbackLabel")}
             </span>
           </div>
         )}
 
         <div className="grid gap-1.5 px-1.5 py-2">
           <span className="w-fit rounded-sm bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-500">
-            Advertisement / تبلیغ
+            {t(dictionary, "ads.label")}
           </span>
           <h2 className="line-clamp-2 text-[13px] font-semibold leading-5 text-neutral-950 group-hover:underline">
             {ad.title}

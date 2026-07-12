@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type ApiErrors = Record<string, string>;
 
-export function LoginForm() {
+export function LoginForm({ locale }: { locale: Locale }) {
   const router = useRouter();
+  const dictionary = getDictionary(locale);
   const [errors, setErrors] = useState<ApiErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,7 +35,7 @@ export function LoginForm() {
     setIsSubmitting(false);
 
     if (!response.ok) {
-      setErrors(result.errors ?? { form: "Login failed." });
+      setErrors(result.errors ?? { form: t(dictionary, "auth.loginFailed") });
       return;
     }
 
@@ -44,13 +47,14 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="grid gap-5">
       <div className="grid gap-2">
         <label htmlFor="identifier" className="text-sm font-medium">
-          Username, email, or phone
+          {t(dictionary, "auth.identifier")}
         </label>
         <input
           id="identifier"
           name="identifier"
           autoComplete="username"
           required
+          dir="auto"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.identifier} />
@@ -58,7 +62,7 @@ export function LoginForm() {
 
       <div className="grid gap-2">
         <label htmlFor="password" className="text-sm font-medium">
-          Password
+          {t(dictionary, "auth.password")}
         </label>
         <input
           id="password"
@@ -66,6 +70,7 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
+          dir="ltr"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.password} />
@@ -80,13 +85,13 @@ export function LoginForm() {
         disabled={isSubmitting}
         className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSubmitting ? "Logging in..." : "Log in"}
+        {isSubmitting ? t(dictionary, "auth.loggingIn") : t(dictionary, "auth.login")}
       </button>
 
       <p className="text-sm text-neutral-600">
-        New to PinFa?{" "}
+        {t(dictionary, "auth.newToPinfa")}{" "}
         <Link href="/auth/register" className="font-medium text-neutral-950">
-          Create an account
+          {t(dictionary, "auth.createAccount")}
         </Link>
       </p>
     </form>

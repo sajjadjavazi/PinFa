@@ -6,18 +6,27 @@ import { BoardCard } from "@/components/boards/BoardCard";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ProfileEditForm } from "@/components/ProfileEditForm";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, t } from "@/lib/i18n/t";
 import { getNotificationSummary } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
-export const metadata: Metadata = {
-  robots: {
-    follow: false,
-    index: false,
-  },
-  title: "Your Profile",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
+
+  return {
+    robots: {
+      follow: false,
+      index: false,
+    },
+    title: t(dictionary, "profile.title"),
+  };
+}
 
 export default async function ProfilePage() {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const user = await getCurrentUser();
 
   if (!user) {
@@ -76,7 +85,7 @@ export default async function ProfilePage() {
 
   return (
     <>
-    <AppHeader currentUser={user} notificationSummary={notificationSummary} />
+    <AppHeader currentUser={user} locale={locale} notificationSummary={notificationSummary} />
     <main className="mx-auto grid min-h-screen w-full max-w-5xl gap-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="flex flex-col gap-6 border-b border-neutral-200 pb-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
@@ -87,8 +96,8 @@ export default async function ProfilePage() {
               {user.displayName}
             </h1>
             <div className="mt-3 flex gap-4 text-sm text-neutral-600">
-              <span>{user.followerCount} followers</span>
-              <span>{user.followingCount} following</span>
+              <span>{t(dictionary, "profile.followerCount", { count: user.followerCount })}</span>
+              <span>{t(dictionary, "profile.followingCount", { count: user.followingCount })}</span>
             </div>
           </div>
         </div>
@@ -97,33 +106,33 @@ export default async function ProfilePage() {
             href={`/users/${user.username}`}
             className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
           >
-            Public profile
+            {t(dictionary, "profile.publicProfile")}
           </Link>
           <Link
             href="/onboarding/interests"
             className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
           >
-            Interests
+            {t(dictionary, "profile.interests")}
           </Link>
           <Link
             href="/boards/new"
             className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
           >
-            New Board
+            {t(dictionary, "board.newBoard")}
           </Link>
         </div>
       </section>
 
       <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
         <div>
-          <h2 className="text-xl font-semibold text-neutral-950">Profile</h2>
+          <h2 className="text-xl font-semibold text-neutral-950">{t(dictionary, "profile.profile")}</h2>
           <dl className="mt-5 grid gap-5 text-sm">
             <div>
-              <dt className="font-medium text-neutral-950">Bio</dt>
-              <dd className="mt-1 text-neutral-600">{user.bio || "No bio yet."}</dd>
+              <dt className="font-medium text-neutral-950">{t(dictionary, "common.bio")}</dt>
+              <dd className="mt-1 text-neutral-600">{user.bio || t(dictionary, "profile.noBio")}</dd>
             </div>
             <div>
-              <dt className="font-medium text-neutral-950">Website</dt>
+              <dt className="font-medium text-neutral-950">{t(dictionary, "common.website")}</dt>
               <dd className="mt-1 text-neutral-600">
                 {user.websiteUrl ? (
                   <a
@@ -135,12 +144,12 @@ export default async function ProfilePage() {
                     {user.websiteUrl}
                   </a>
                 ) : (
-                  "No website yet."
+                  t(dictionary, "common.noWebsite")
                 )}
               </dd>
             </div>
             <div>
-              <dt className="font-medium text-neutral-950">Interests</dt>
+              <dt className="font-medium text-neutral-950">{t(dictionary, "profile.interests")}</dt>
               <dd className="mt-2 flex flex-wrap gap-2">
                 {interests.length > 0 ? (
                   interests.map((interest) => (
@@ -152,7 +161,7 @@ export default async function ProfilePage() {
                     </span>
                   ))
                 ) : (
-                  <span className="text-neutral-600">No interests selected.</span>
+                  <span className="text-neutral-600">{t(dictionary, "profile.noInterests")}</span>
                 )}
               </dd>
             </div>
@@ -160,12 +169,13 @@ export default async function ProfilePage() {
         </div>
 
         <section>
-          <h2 className="text-xl font-semibold text-neutral-950">Edit profile</h2>
+          <h2 className="text-xl font-semibold text-neutral-950">{t(dictionary, "profile.editProfile")}</h2>
           <div className="mt-5">
             <ProfileEditForm
               initialDisplayName={user.displayName}
               initialBio={user.bio}
               initialWebsiteUrl={user.websiteUrl}
+              locale={locale}
             />
           </div>
         </section>
@@ -174,28 +184,28 @@ export default async function ProfilePage() {
       <section className="grid gap-5 border-t border-neutral-200 pt-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-neutral-950">Boards</h2>
+            <h2 className="text-xl font-semibold text-neutral-950">{t(dictionary, "board.boards")}</h2>
             <p className="mt-1 text-sm text-neutral-500">
-              Collections you have created.
+              {t(dictionary, "profile.boardsDescription")}
             </p>
           </div>
           <Link
             href="/boards/new"
             className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
           >
-            Create Board
+            {t(dictionary, "board.create")}
           </Link>
         </div>
 
         {boards.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {boards.map((board) => (
-              <BoardCard key={board.id} board={board} />
+              <BoardCard key={board.id} board={board} locale={locale} />
             ))}
           </div>
         ) : (
           <div className="rounded-md border border-neutral-200 px-4 py-8 text-center text-sm text-neutral-500">
-            No Boards yet.
+            {t(dictionary, "board.noBoards")}
           </div>
         )}
       </section>

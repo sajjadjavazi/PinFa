@@ -1,11 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type ProfileEditFormProps = {
   initialDisplayName: string;
   initialBio: string | null;
   initialWebsiteUrl: string | null;
+  locale: Locale;
 };
 
 type ApiErrors = Record<string, string>;
@@ -14,7 +17,9 @@ export function ProfileEditForm({
   initialDisplayName,
   initialBio,
   initialWebsiteUrl,
+  locale,
 }: ProfileEditFormProps) {
+  const dictionary = getDictionary(locale);
   const [errors, setErrors] = useState<ApiErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -42,7 +47,7 @@ export function ProfileEditForm({
     setIsSubmitting(false);
 
     if (!response.ok) {
-      setErrors(result.errors ?? { form: "Profile update failed." });
+      setErrors(result.errors ?? { form: t(dictionary, "profile.saveFailed") });
       return;
     }
 
@@ -53,7 +58,7 @@ export function ProfileEditForm({
     <form onSubmit={handleSubmit} className="grid gap-5">
       <div className="grid gap-2">
         <label htmlFor="displayName" className="text-sm font-medium">
-          Display name
+          {t(dictionary, "auth.displayName")}
         </label>
         <input
           id="displayName"
@@ -69,7 +74,7 @@ export function ProfileEditForm({
 
       <div className="grid gap-2">
         <label htmlFor="bio" className="text-sm font-medium">
-          Bio
+          {t(dictionary, "common.bio")}
         </label>
         <textarea
           id="bio"
@@ -84,7 +89,7 @@ export function ProfileEditForm({
 
       <div className="grid gap-2">
         <label htmlFor="websiteUrl" className="text-sm font-medium">
-          Website
+          {t(dictionary, "common.website")}
         </label>
         <input
           id="websiteUrl"
@@ -92,20 +97,25 @@ export function ProfileEditForm({
           type="url"
           defaultValue={initialWebsiteUrl ?? ""}
           placeholder="https://example.com"
+          dir="ltr"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.websiteUrl} />
       </div>
 
       <FieldError message={errors.form} />
-      {saved ? <p className="text-sm text-green-700">Profile saved.</p> : null}
+      {saved ? (
+        <p className="text-sm text-green-700">
+          {t(dictionary, "profile.profileSaved")}
+        </p>
+      ) : null}
 
       <button
         type="submit"
         disabled={isSubmitting}
         className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSubmitting ? "Saving..." : "Save profile"}
+        {isSubmitting ? t(dictionary, "common.saving") : t(dictionary, "profile.saveProfile")}
       </button>
     </form>
   );

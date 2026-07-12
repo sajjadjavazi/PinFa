@@ -2,6 +2,10 @@ import { ReportReason, ReportStatus, ReportTargetType } from "@prisma/client";
 import Link from "next/link";
 import { ReportActionsPanel } from "@/components/admin/ReportActionsPanel";
 import { requireAdminPageUser } from "@/lib/admin";
+import type { Locale } from "@/lib/i18n/config";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import type { Dictionary } from "@/lib/i18n/t";
+import { getDictionary, t } from "@/lib/i18n/t";
 import {
   getAdminReportStats,
   getAdminReports,
@@ -26,6 +30,8 @@ export default async function AdminReportsPage({
   searchParams,
 }: AdminReportsPageProps) {
   await requireAdminPageUser();
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
 
   const params = await searchParams;
   const filters = parseAdminReportFilters(params);
@@ -38,9 +44,11 @@ export default async function AdminReportsPage({
     <div className="grid gap-8">
       <section className="flex flex-col gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-500">Reports</p>
+          <p className="text-sm font-medium text-neutral-500">
+            {t(dictionary, "admin.reports.reports")}
+          </p>
           <h1 className="mt-1 text-3xl font-semibold text-neutral-950">
-            Report Management
+            {t(dictionary, "admin.reports.heading")}
           </h1>
         </div>
         <dl className="grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
@@ -49,7 +57,9 @@ export default async function AdminReportsPage({
               key={status}
               className="rounded-md bg-white px-4 py-3 shadow-sm ring-1 ring-neutral-200"
             >
-              <dt className="text-neutral-500">{formatEnumLabel(status)}</dt>
+              <dt className="text-neutral-500">
+                {t(dictionary, `enums.reportStatus.${status}`)}
+              </dt>
               <dd className="mt-1 text-2xl font-semibold">{stats[status]}</dd>
             </div>
           ))}
@@ -58,25 +68,29 @@ export default async function AdminReportsPage({
 
       <form className="grid gap-3 rounded-md bg-white p-4 shadow-sm ring-1 ring-neutral-200 md:grid-cols-5">
         <FilterSelect
-          label="Target"
+          dictionary={dictionary}
+          label={t(dictionary, "admin.reports.filters.target")}
           name="targetType"
           options={Object.values(ReportTargetType)}
           value={filters.targetType ?? "ALL"}
         />
         <FilterSelect
-          label="Reason"
+          dictionary={dictionary}
+          label={t(dictionary, "admin.reports.filters.reason")}
           name="reason"
           options={Object.values(ReportReason)}
           value={filters.reason ?? "ALL"}
         />
         <FilterSelect
-          label="Status"
+          dictionary={dictionary}
+          label={t(dictionary, "admin.reports.filters.status")}
           name="status"
           options={Object.values(ReportStatus)}
           value={filters.status ?? "ALL"}
         />
         <FilterSelect
-          label="Order"
+          dictionary={dictionary}
+          label={t(dictionary, "admin.reports.filters.order")}
           name="order"
           options={["newest", "oldest"]}
           value={filters.order}
@@ -86,34 +100,40 @@ export default async function AdminReportsPage({
             type="submit"
             className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
           >
-            Apply
+            {t(dictionary, "admin.actions.apply")}
           </button>
           <Link
             href="/admin/reports"
             className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
           >
-            Reset
+            {t(dictionary, "admin.actions.reset")}
           </Link>
         </div>
       </form>
 
       <section className="grid gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Reports</h2>
+          <h2 className="text-xl font-semibold">{t(dictionary, "admin.reports.reports")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Showing {reports.items.length} reports. Open reports are prioritized
-            when no status filter is selected.
+            {t(dictionary, "admin.reports.showing", {
+              count: reports.items.length,
+            })}
           </p>
         </div>
 
         {reports.items.length > 0 ? (
           <div className="grid gap-4">
             {reports.items.map((report) => (
-              <ReportCard key={report.id} report={report} />
+              <ReportCard
+                key={report.id}
+                dictionary={dictionary}
+                locale={locale}
+                report={report}
+              />
             ))}
           </div>
         ) : (
-          <EmptyState message="No reports match the selected filters." />
+          <EmptyState message={t(dictionary, "admin.reports.noMatches")} />
         )}
 
         {reports.hasMore && reports.nextCursor ? (
@@ -122,7 +142,7 @@ export default async function AdminReportsPage({
               href={buildNextPageHref(params, reports.nextCursor)}
               className="inline-grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
             >
-              Load More
+              {t(dictionary, "admin.actions.loadMore")}
             </Link>
           </div>
         ) : null}
@@ -131,7 +151,15 @@ export default async function AdminReportsPage({
   );
 }
 
-function ReportCard({ report }: { report: AdminReportListItem }) {
+function ReportCard({
+  dictionary,
+  locale,
+  report,
+}: {
+  dictionary: Dictionary;
+  locale: Locale;
+  report: AdminReportListItem;
+}) {
   const canAct =
     report.status === ReportStatus.OPEN || report.status === ReportStatus.IN_REVIEW;
 
@@ -139,14 +167,14 @@ function ReportCard({ report }: { report: AdminReportListItem }) {
     <article className="grid gap-5 rounded-md bg-white p-4 shadow-sm ring-1 ring-neutral-200 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="grid gap-5">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{report.status}</Badge>
-          <Badge>{report.targetType}</Badge>
-          <Badge>{report.reason}</Badge>
+          <Badge>{t(dictionary, `enums.reportStatus.${report.status}`)}</Badge>
+          <Badge>{t(dictionary, `enums.targetType.${report.targetType}`)}</Badge>
+          <Badge>{t(dictionary, `reportReasons.${report.reason}`)}</Badge>
         </div>
 
         <div>
           <h3 className="break-all text-lg font-semibold text-neutral-950">
-            Report #{report.id}
+            {t(dictionary, "admin.reports.report")} #{report.id}
           </h3>
           {report.description ? (
             <p className="mt-2 leading-6 text-neutral-600">
@@ -154,13 +182,13 @@ function ReportCard({ report }: { report: AdminReportListItem }) {
             </p>
           ) : (
             <p className="mt-2 text-sm text-neutral-500">
-              No reporter description.
+              {t(dictionary, "admin.reports.descriptionEmpty")}
             </p>
           )}
         </div>
 
         <dl className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
-          <InfoItem label="Reporter">
+          <InfoItem label={t(dictionary, "admin.reports.reporter")}>
             <Link
               href={`/users/${report.reporter.username}`}
               className="font-medium text-neutral-950 underline-offset-4 hover:underline"
@@ -171,19 +199,19 @@ function ReportCard({ report }: { report: AdminReportListItem }) {
               @{report.reporter.username} - {report.reporter.status}
             </span>
           </InfoItem>
-          <InfoItem label="Target ID">
+          <InfoItem label={t(dictionary, "admin.reports.targetId")}>
             <span className="break-all">{report.targetId}</span>
           </InfoItem>
-          <InfoItem label="Created">
-            {new Date(report.createdAt).toLocaleString()}
+          <InfoItem label={t(dictionary, "admin.reports.created")}>
+            {new Date(report.createdAt).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
           </InfoItem>
-          <InfoItem label="Updated">
-            {new Date(report.updatedAt).toLocaleString()}
+          <InfoItem label={t(dictionary, "admin.reports.updated")}>
+            {new Date(report.updatedAt).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
           </InfoItem>
-          <InfoItem label="Reviewed By">
+          <InfoItem label={t(dictionary, "admin.reports.reviewedBy")}>
             {report.reviewedBy
               ? `${report.reviewedBy.displayName} (@${report.reviewedBy.username})`
-              : "Not reviewed"}
+              : t(dictionary, "admin.reports.notReviewed")}
           </InfoItem>
         </dl>
 
@@ -193,11 +221,12 @@ function ReportCard({ report }: { report: AdminReportListItem }) {
           </p>
         ) : null}
 
-        <TargetPreview target={report.targetPreview} />
+        <TargetPreview dictionary={dictionary} target={report.targetPreview} />
       </div>
 
       <ReportActionsPanel
         canAct={canAct}
+        locale={locale}
         reportId={report.id}
         targetType={report.targetType}
       />
@@ -206,40 +235,48 @@ function ReportCard({ report }: { report: AdminReportListItem }) {
 }
 
 function TargetPreview({
+  dictionary,
   target,
 }: {
+  dictionary: Dictionary;
   target: AdminReportTargetPreview | null;
 }) {
   if (!target) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Target not found or no longer available.
+        {t(dictionary, "admin.reports.boardNotFound")}
       </div>
     );
   }
 
   if (target.type === "PIN") {
-    return <PinTargetPreview pin={target} />;
+    return <PinTargetPreview dictionary={dictionary} pin={target} />;
   }
 
   if (target.type === "USER") {
-    return <UserTargetPreview user={target} />;
+    return <UserTargetPreview dictionary={dictionary} user={target} />;
   }
 
-  return <BoardTargetPreview board={target} />;
+  return <BoardTargetPreview board={target} dictionary={dictionary} />;
 }
 
 function PinTargetPreview({
+  dictionary,
   pin,
 }: {
+  dictionary: Dictionary;
   pin: Extract<AdminReportTargetPreview, { type: "PIN" }>;
 }) {
   return (
     <section className="grid gap-4 rounded-md border border-neutral-200 p-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-      <ImageBox alt={pin.title} imageUrl={pin.imageUrl} label="Image unavailable" />
+      <ImageBox
+        alt={pin.title}
+        imageUrl={pin.imageUrl}
+        label={t(dictionary, "admin.reports.imageUnavailable")}
+      />
       <div className="grid content-start gap-2">
         <div className="flex flex-wrap gap-2">
-          <Badge>{pin.status}</Badge>
+          <Badge>{t(dictionary, `enums.pinStatus.${pin.status}`)}</Badge>
           {pin.category ? <Badge>{pin.category.name}</Badge> : null}
         </div>
         {pin.publicUrl ? (
@@ -253,8 +290,8 @@ function PinTargetPreview({
           <p className="font-semibold text-neutral-950">{pin.title}</p>
         )}
         <p className="text-sm text-neutral-500">
-          by {pin.owner.displayName} (@{pin.owner.username}) - {pin.reportCount}{" "}
-          reports
+          {t(dictionary, "search.byOwner", { owner: pin.owner.displayName })} (@
+          {pin.owner.username}) - {pin.reportCount} {t(dictionary, "admin.reports.reports")}
         </p>
       </div>
     </section>
@@ -262,13 +299,19 @@ function PinTargetPreview({
 }
 
 function UserTargetPreview({
+  dictionary,
   user,
 }: {
+  dictionary: Dictionary;
   user: Extract<AdminReportTargetPreview, { type: "USER" }>;
 }) {
   return (
     <section className="grid gap-4 rounded-md border border-neutral-200 p-3 sm:grid-cols-[72px_minmax(0,1fr)]">
-      <ImageBox alt={user.displayName} imageUrl={user.avatarUrl} label="No avatar" />
+      <ImageBox
+        alt={user.displayName}
+        imageUrl={user.avatarUrl}
+        label={t(dictionary, "admin.reports.noAvatar")}
+      />
       <div className="grid content-start gap-2">
         <div className="flex flex-wrap gap-2">
           <Badge>{user.status}</Badge>
@@ -286,7 +329,8 @@ function UserTargetPreview({
         )}
         <p className="text-sm text-neutral-500">
           @{user.username} - trust {user.trustScore} - {user.followerCount}{" "}
-          followers - {user.followingCount} following
+          {t(dictionary, "profile.followerCount", { count: user.followerCount })} -{" "}
+          {t(dictionary, "profile.followingCount", { count: user.followingCount })}
         </p>
       </div>
     </section>
@@ -295,17 +339,23 @@ function UserTargetPreview({
 
 function BoardTargetPreview({
   board,
+  dictionary,
 }: {
   board: Extract<AdminReportTargetPreview, { type: "BOARD" }>;
+  dictionary: Dictionary;
 }) {
   return (
     <section className="grid gap-4 rounded-md border border-neutral-200 p-3 sm:grid-cols-[160px_minmax(0,1fr)]">
-      <ImageBox alt={board.title} imageUrl={board.imageUrl} label="No cover" />
+      <ImageBox
+        alt={board.title}
+        imageUrl={board.imageUrl}
+        label={t(dictionary, "admin.reports.noCover")}
+      />
       <div className="grid content-start gap-2">
         <div className="flex flex-wrap gap-2">
-          <Badge>{board.visibility}</Badge>
-          <Badge>{board.pinCount} Pins</Badge>
-          <Badge>{board.followerCount} Followers</Badge>
+          <Badge>{t(dictionary, `enums.boardVisibility.${board.visibility}`)}</Badge>
+          <Badge>{t(dictionary, "board.pinCount", { count: board.pinCount })}</Badge>
+          <Badge>{t(dictionary, "board.followerCount", { count: board.followerCount })}</Badge>
         </div>
         {board.publicUrl ? (
           <Link
@@ -321,7 +371,8 @@ function BoardTargetPreview({
           <p className="text-sm text-neutral-600">{board.description}</p>
         ) : null}
         <p className="text-sm text-neutral-500">
-          by {board.owner.displayName} (@{board.owner.username})
+          {t(dictionary, "search.byOwner", { owner: board.owner.displayName })} (@
+          {board.owner.username})
         </p>
       </div>
     </section>
@@ -355,11 +406,13 @@ function ImageBox({
 }
 
 function FilterSelect({
+  dictionary,
   label,
   name,
   options,
   value,
 }: {
+  dictionary: Dictionary;
   label: string;
   name: string;
   options: string[];
@@ -373,10 +426,12 @@ function FilterSelect({
         defaultValue={value}
         className="h-10 rounded-md border border-neutral-300 bg-white px-2 text-sm outline-none transition focus:border-neutral-950"
       >
-        {name !== "order" ? <option value="ALL">All</option> : null}
+        {name !== "order" ? (
+          <option value="ALL">{t(dictionary, "admin.reports.filters.all")}</option>
+        ) : null}
         {options.map((option) => (
           <option key={option} value={option}>
-            {formatEnumLabel(option)}
+            {formatAdminOptionLabel(dictionary, name, option)}
           </option>
         ))}
       </select>
@@ -432,7 +487,23 @@ function buildNextPageHref(
   return `/admin/reports?${nextParams.toString()}`;
 }
 
-function formatEnumLabel(value: string) {
+function formatAdminOptionLabel(
+  dictionary: Dictionary,
+  name: string,
+  value: string,
+) {
+  if (name === "reason") {
+    return t(dictionary, `reportReasons.${value}`);
+  }
+
+  if (name === "status") {
+    return t(dictionary, `enums.reportStatus.${value}`);
+  }
+
+  if (name === "targetType") {
+    return t(dictionary, `enums.targetType.${value}`);
+  }
+
   return value
     .toLowerCase()
     .split("_")

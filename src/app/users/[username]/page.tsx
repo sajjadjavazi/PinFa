@@ -7,6 +7,8 @@ import { FollowButton } from "@/components/FollowButton";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ReportModal } from "@/components/social/ReportModal";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, t } from "@/lib/i18n/t";
 import { prisma } from "@/lib/prisma";
 import { publicProfileSelect } from "@/lib/user-selects";
 
@@ -20,6 +22,8 @@ export async function generateMetadata({
   params,
 }: PublicProfilePageProps): Promise<Metadata> {
   const { username } = await params;
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const normalizedUsername = decodeURIComponent(username).toLowerCase();
   const profile = await prisma.user.findFirst({
     where: {
@@ -40,13 +44,15 @@ export async function generateMetadata({
         follow: false,
         index: false,
       },
-      title: "Profile not available",
+      title: t(dictionary, "meta.profileNotAvailable"),
     };
   }
 
   const description =
     profile.bio?.trim() ||
-    `Explore ${profile.displayName}'s public Boards and visual inspiration on PinFa.`;
+    t(dictionary, "meta.profileFallbackDescription", {
+      name: profile.displayName,
+    });
 
   return {
     alternates: {
@@ -75,6 +81,8 @@ export default async function PublicProfilePage({
   params,
 }: PublicProfilePageProps) {
   const { username } = await params;
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const normalizedUsername = decodeURIComponent(username).toLowerCase();
   const [profile, currentUser] = await Promise.all([
     prisma.user.findFirst({
@@ -134,7 +142,7 @@ export default async function PublicProfilePage({
 
   return (
     <>
-    <AppHeader currentUser={currentUser} />
+    <AppHeader currentUser={currentUser} locale={locale} />
     <main className="mx-auto grid min-h-screen w-full max-w-5xl gap-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="flex flex-col gap-6 border-b border-neutral-200 pb-8 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-5">
@@ -148,8 +156,16 @@ export default async function PublicProfilePage({
               {profile.displayName}
             </h1>
             <div className="mt-3 flex gap-4 text-sm text-neutral-600">
-              <span>{profile.followerCount} followers</span>
-              <span>{profile.followingCount} following</span>
+              <span>
+                {t(dictionary, "profile.followerCount", {
+                  count: profile.followerCount,
+                })}
+              </span>
+              <span>
+                {t(dictionary, "profile.followingCount", {
+                  count: profile.followingCount,
+                })}
+              </span>
             </div>
           </div>
         </div>
@@ -159,21 +175,26 @@ export default async function PublicProfilePage({
               href="/profile"
               className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
             >
-              Edit profile
+              {t(dictionary, "profile.editProfile")}
             </Link>
           ) : currentUser ? (
-            <FollowButton userId={profile.id} initialFollowing={Boolean(follow)} />
+            <FollowButton
+              initialFollowing={Boolean(follow)}
+              locale={locale}
+              userId={profile.id}
+            />
           ) : (
             <Link
               href="/auth/login"
               className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
             >
-              Log in to follow
+              {t(dictionary, "follow.logInToFollow")}
             </Link>
           )}
           {!isOwnProfile ? (
             <ReportModal
               isAuthenticated={Boolean(currentUser)}
+              locale={locale}
               targetId={profile.id}
               targetType="USER"
             />
@@ -183,9 +204,9 @@ export default async function PublicProfilePage({
 
       <section className="grid gap-5 text-sm">
         <div>
-          <h2 className="text-xl font-semibold text-neutral-950">About</h2>
+          <h2 className="text-xl font-semibold text-neutral-950">{t(dictionary, "profile.about")}</h2>
           <p className="mt-3 max-w-2xl leading-7 text-neutral-600">
-            {profile.bio || "No bio yet."}
+            {profile.bio || t(dictionary, "profile.noBio")}
           </p>
         </div>
         {profile.websiteUrl ? (
@@ -201,16 +222,16 @@ export default async function PublicProfilePage({
       </section>
 
       <section className="grid gap-5 border-t border-neutral-200 pt-8">
-        <h2 className="text-xl font-semibold text-neutral-950">Boards</h2>
+        <h2 className="text-xl font-semibold text-neutral-950">{t(dictionary, "board.boards")}</h2>
         {boards.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {boards.map((board) => (
-              <BoardCard key={board.id} board={board} />
+              <BoardCard key={board.id} board={board} locale={locale} />
             ))}
           </div>
         ) : (
           <div className="rounded-md border border-neutral-200 px-4 py-8 text-center text-sm text-neutral-500">
-            No public Boards yet.
+            {t(dictionary, "board.noPublicBoards")}
           </div>
         )}
       </section>

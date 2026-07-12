@@ -1,18 +1,42 @@
 @import "tailwindcss";
+@import "@fontsource/vazirmatn/400.css";
+@import "@fontsource/vazirmatn/500.css";
+@import "@fontsource/vazirmatn/600.css";
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-latin: Arial, Helvetica, system-ui, sans-serif;
+  --font-persian: Vazirmatn, system-ui, sans-serif;
 }
 
 body {
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-latin);
+  font-weight: 400;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+html[lang="fa"] body,
+html[dir="rtl"] body {
+  font-family: var(--font-persian);
+}
+
+code,
+kbd,
+pre,
+samp,
+input[dir="ltr"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="url"],
+[dir="ltr"] {
+  font-family: var(--font-latin);
 }
 
 img,

@@ -8,6 +8,8 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ReportModal } from "@/components/social/ReportModal";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, t } from "@/lib/i18n/t";
 import { prisma } from "@/lib/prisma";
 import { publicProfileSelect } from "@/lib/user-selects";
 
@@ -21,6 +23,8 @@ export async function generateMetadata({
   params,
 }: BoardDetailPageProps): Promise<Metadata> {
   const { id } = await params;
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const board = await prisma.board.findFirst({
     where: {
       id,
@@ -56,13 +60,17 @@ export async function generateMetadata({
         follow: false,
         index: false,
       },
-      title: "Board not available",
+      title: t(dictionary, "board.boardNotAvailable"),
     };
   }
 
   const description =
     board.description?.trim() ||
-    `${board.title} is a public PinFa Board by ${board.owner.displayName} with ${board.pinCount} Pins.`;
+    t(dictionary, "meta.boardFallbackDescription", {
+      count: board.pinCount,
+      owner: board.owner.displayName,
+      title: board.title,
+    });
   const coverUrl =
     board.coverPin?.status === "PUBLISHED"
       ? board.coverPin.imageFeedUrl ?? board.coverPin.imageThumbnailUrl
@@ -95,6 +103,8 @@ export async function generateMetadata({
 
 export default async function BoardDetailPage({ params }: BoardDetailPageProps) {
   const { id } = await params;
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const [board, currentUser] = await Promise.all([
     prisma.board.findUnique({
       where: {
@@ -182,7 +192,7 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
 
   return (
     <>
-    <AppHeader currentUser={currentUser} />
+    <AppHeader currentUser={currentUser} locale={locale} />
     <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-10 px-4 py-8 sm:px-6 lg:px-8">
       <section className="grid gap-6 border-b border-neutral-200 pb-8 lg:grid-cols-[260px_minmax(0,1fr)]">
         {coverUrl ? (
@@ -197,13 +207,15 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
           />
         ) : (
           <div className="grid aspect-[4/3] place-items-center rounded-md bg-neutral-100 text-sm text-neutral-500">
-            No cover
+            {t(dictionary, "board.noCover")}
           </div>
         )}
 
         <div className="grid content-center gap-5">
           <div>
-            <p className="text-sm text-neutral-500">{board.visibility}</p>
+            <p className="text-sm text-neutral-500">
+              {t(dictionary, `enums.boardVisibility.${board.visibility}`)}
+            </p>
             <h1 className="mt-2 text-4xl font-semibold text-neutral-950">
               {board.title}
             </h1>
@@ -215,8 +227,10 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
           </div>
 
           <div className="flex flex-wrap items-center gap-5 text-sm text-neutral-600">
-            <span>{board.pinCount} Pins</span>
-            <span>{board.followerCount} followers</span>
+            <span>{t(dictionary, "board.pinCount", { count: board.pinCount })}</span>
+            <span>
+              {t(dictionary, "board.followerCount", { count: board.followerCount })}
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
@@ -242,24 +256,26 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
                 href="/boards/new"
                 className="grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
               >
-                New Board
+                {t(dictionary, "board.newBoard")}
               </Link>
             ) : currentUser ? (
               <BoardFollowButton
                 boardId={board.id}
                 initialFollowing={Boolean(following)}
+                locale={locale}
               />
             ) : (
               <Link
                 href="/auth/login"
                 className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
               >
-                Log in to follow
+                {t(dictionary, "board.logInToFollow")}
               </Link>
             )}
             {!isOwner ? (
               <ReportModal
                 isAuthenticated={Boolean(currentUser)}
+                locale={locale}
                 targetId={board.id}
                 targetType="BOARD"
               />
@@ -269,25 +285,31 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
       </section>
 
       <section className="grid gap-5">
-        <h2 className="text-xl font-semibold text-neutral-950">Pins</h2>
+        <h2 className="text-xl font-semibold text-neutral-950">{t(dictionary, "search.pins")}</h2>
         {board.pins.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {board.pins.map((boardPin) => (
               <article key={boardPin.id} className="grid gap-3">
                 <Link href={`/pins/${boardPin.pin.id}`} className="group grid gap-3">
-                  <PinImage pin={boardPin.pin} />
+                  <PinImage
+                    fallbackLabel={t(dictionary, "common.imageUnavailable")}
+                    pin={boardPin.pin}
+                  />
                   <div>
                     <h3 className="font-semibold text-neutral-950 group-hover:underline">
                       {boardPin.pin.title}
                     </h3>
                     <p className="mt-1 text-sm text-neutral-500">
-                      by {boardPin.pin.owner.displayName}
+                      {t(dictionary, "search.byOwner", {
+                        owner: boardPin.pin.owner.displayName,
+                      })}
                     </p>
                   </div>
                 </Link>
                 {isOwner ? (
                   <RemovePinFromBoardButton
                     boardId={board.id}
+                    locale={locale}
                     pinId={boardPin.pin.id}
                   />
                 ) : null}
@@ -296,7 +318,7 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
           </div>
         ) : (
           <div className="rounded-md border border-neutral-200 px-4 py-8 text-center text-sm text-neutral-500">
-            This Board has no visible Pins yet.
+            {t(dictionary, "board.noVisiblePins")}
           </div>
         )}
       </section>
@@ -306,8 +328,10 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
 }
 
 function PinImage({
+  fallbackLabel,
   pin,
 }: {
+  fallbackLabel: string;
   pin: {
     title: string;
     imageThumbnailUrl: string | null;
@@ -323,7 +347,7 @@ function PinImage({
   if (!imageUrl) {
     return (
       <div className="grid aspect-[4/3] place-items-center rounded-md bg-neutral-100 text-sm text-neutral-500">
-        Image unavailable
+        {fallbackLabel}
       </div>
     );
   }

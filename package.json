@@ -16,6 +16,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@fontsource/vazirmatn": "^5.2.8",
     "@google-cloud/vision": "^5.3.7",
     "@prisma/client": "^6.19.3",
     "next": "^15.5.6",

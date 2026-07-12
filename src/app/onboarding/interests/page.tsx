@@ -3,17 +3,26 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/AppHeader";
 import { OnboardingInterestsForm } from "@/components/OnboardingInterestsForm";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, t } from "@/lib/i18n/t";
 import { prisma } from "@/lib/prisma";
 
-export const metadata: Metadata = {
-  robots: {
-    follow: false,
-    index: false,
-  },
-  title: "Choose Interests",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
+
+  return {
+    robots: {
+      follow: false,
+      index: false,
+    },
+    title: t(dictionary, "interests.chooseTitle"),
+  };
+}
 
 export default async function OnboardingInterestsPage() {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const user = await getCurrentUser();
 
   if (!user) {
@@ -46,14 +55,14 @@ export default async function OnboardingInterestsPage() {
 
   return (
     <>
-    <AppHeader currentUser={user} />
+    <AppHeader currentUser={user} locale={locale} />
     <main className="mx-auto grid min-h-screen w-full max-w-5xl content-start gap-8 px-4 py-8 sm:px-6">
       <section>
         <p className="text-sm font-medium uppercase text-neutral-500">
           PinFa
         </p>
         <h1 className="mt-3 text-3xl font-semibold text-neutral-950">
-          Choose your interests
+          {t(dictionary, "interests.chooseTitle")}
         </h1>
       </section>
 
@@ -61,9 +70,12 @@ export default async function OnboardingInterestsPage() {
         <OnboardingInterestsForm
           categories={categories}
           initialSelectedIds={interests.map((interest) => interest.categoryId)}
+          locale={locale}
         />
       ) : (
-        <p className="text-sm text-neutral-600">No active categories found.</p>
+        <p className="text-sm text-neutral-600">
+          {t(dictionary, "interests.emptyCategories")}
+        </p>
       )}
     </main>
     </>

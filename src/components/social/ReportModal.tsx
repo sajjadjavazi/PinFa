@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type ReportTargetType = "PIN" | "USER" | "BOARD";
 
@@ -10,6 +12,7 @@ type ReportModalProps = {
   buttonLabel?: string;
   buttonClassName?: string;
   isAuthenticated: boolean;
+  locale?: Locale;
   loginClassName?: string;
   loginLabel?: string;
   targetId: string;
@@ -17,29 +20,33 @@ type ReportModalProps = {
 };
 
 const reportReasons = [
-  { value: "ADULT_CONTENT", label: "Adult content" },
-  { value: "NUDITY", label: "Nudity" },
-  { value: "SEXUAL_CONTENT", label: "Sexual content" },
-  { value: "RACY_CONTENT", label: "Racy content" },
-  { value: "VIOLENCE", label: "Violence" },
-  { value: "MEDICAL_SENSITIVE", label: "Medical sensitive" },
-  { value: "SPAM", label: "Spam" },
-  { value: "HARASSMENT", label: "Harassment" },
-  { value: "ILLEGAL_CONTENT", label: "Illegal content" },
-  { value: "COPYRIGHT", label: "Copyright" },
-  { value: "OTHER", label: "Other" },
-];
+  "ADULT_CONTENT",
+  "NUDITY",
+  "SEXUAL_CONTENT",
+  "RACY_CONTENT",
+  "VIOLENCE",
+  "MEDICAL_SENSITIVE",
+  "SPAM",
+  "HARASSMENT",
+  "ILLEGAL_CONTENT",
+  "COPYRIGHT",
+  "OTHER",
+] as const;
 
 export function ReportModal({
   buttonAriaLabel,
-  buttonLabel = "Report",
+  buttonLabel,
   buttonClassName = "h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950",
   isAuthenticated,
+  locale = DEFAULT_LOCALE,
   loginClassName = "grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950",
-  loginLabel = "Log in to report",
+  loginLabel,
   targetId,
   targetType,
 }: ReportModalProps) {
+  const dictionary = getDictionary(locale);
+  const resolvedButtonLabel = buttonLabel ?? t(dictionary, "report.report");
+  const resolvedLoginLabel = loginLabel ?? t(dictionary, "report.loginToReport");
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -51,7 +58,7 @@ export function ReportModal({
         href="/auth/login"
         className={loginClassName}
       >
-        {loginLabel}
+        {resolvedLoginLabel}
       </Link>
     );
   }
@@ -85,12 +92,12 @@ export function ReportModal({
           result.errors?.reason ??
           result.errors?.targetId ??
           result.errors?.auth ??
-          "Report failed.",
+          t(dictionary, "report.failed"),
       );
       return;
     }
 
-    setMessage("Report submitted.");
+    setMessage(t(dictionary, "report.submitted"));
   }
 
   function closeModal() {
@@ -104,10 +111,10 @@ export function ReportModal({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        aria-label={buttonAriaLabel ?? buttonLabel}
+        aria-label={buttonAriaLabel ?? resolvedButtonLabel}
         className={buttonClassName}
       >
-        {buttonLabel}
+        {resolvedButtonLabel}
       </button>
 
       {isOpen ? (
@@ -116,17 +123,19 @@ export function ReportModal({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold text-neutral-950">
-                  Report {targetType.toLowerCase()}
+                  {t(dictionary, "report.reportTarget", {
+                    target: t(dictionary, `enums.targetType.${targetType}`),
+                  })}
                 </h2>
                 <p className="mt-1 text-sm text-neutral-500">
-                  Choose the closest reason.
+                  {t(dictionary, "report.subtitle")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
                 className="h-8 w-8 rounded-md border border-neutral-300 text-sm font-medium text-neutral-700 transition hover:border-neutral-950"
-                aria-label="Close report dialog"
+                aria-label={t(dictionary, "report.closeDialog")}
               >
                 X
               </button>
@@ -142,14 +151,14 @@ export function ReportModal({
                   onClick={closeModal}
                   className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
                 >
-                  Done
+                  {t(dictionary, "common.done")}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="grid gap-4">
                 <div className="grid gap-2">
                   <label htmlFor={`${targetType}-${targetId}-reason`} className="text-sm font-medium">
-                    Reason
+                    {t(dictionary, "report.reason")}
                   </label>
                   <select
                     id={`${targetType}-${targetId}-reason`}
@@ -159,11 +168,11 @@ export function ReportModal({
                     className="h-11 rounded-md border border-neutral-300 bg-white px-3 outline-none transition focus:border-neutral-950"
                   >
                     <option value="" disabled>
-                      Select a reason
+                      {t(dictionary, "report.selectReason")}
                     </option>
                     {reportReasons.map((reason) => (
-                      <option key={reason.value} value={reason.value}>
-                        {reason.label}
+                      <option key={reason} value={reason}>
+                        {t(dictionary, `reportReasons.${reason}`)}
                       </option>
                     ))}
                   </select>
@@ -171,7 +180,7 @@ export function ReportModal({
 
                 <div className="grid gap-2">
                   <label htmlFor={`${targetType}-${targetId}-description`} className="text-sm font-medium">
-                    Details
+                    {t(dictionary, "report.details")}
                   </label>
                   <textarea
                     id={`${targetType}-${targetId}-description`}
@@ -190,14 +199,16 @@ export function ReportModal({
                     disabled={isSubmitting}
                     className="h-10 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
                   >
-                    {isSubmitting ? "Submitting..." : "Submit Report"}
+                    {isSubmitting
+                      ? t(dictionary, "report.submitting")
+                      : t(dictionary, "report.submitReport")}
                   </button>
                   <button
                     type="button"
                     onClick={closeModal}
                     className="h-10 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
                   >
-                    Cancel
+                    {t(dictionary, "common.cancel")}
                   </button>
                 </div>
               </form>

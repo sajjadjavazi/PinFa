@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ModerationActionPanel } from "@/components/admin/ModerationActionButton";
 import { requireAdminPageUser } from "@/lib/admin";
+import type { Locale } from "@/lib/i18n/config";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import type { Dictionary } from "@/lib/i18n/t";
+import { getDictionary, t } from "@/lib/i18n/t";
 import {
   getPendingModerationPins,
   getRecentlyPublishedModerationPins,
@@ -19,6 +23,8 @@ export default async function AdminModerationPage({
   searchParams,
 }: AdminModerationPageProps) {
   await requireAdminPageUser();
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
 
   const resolvedSearchParams = await searchParams;
   const [pendingQueue, publishedPins] = await Promise.all([
@@ -33,18 +39,20 @@ export default async function AdminModerationPage({
     <div className="grid gap-8">
       <section className="flex flex-col gap-4 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-500">Moderation</p>
+          <p className="text-sm font-medium text-neutral-500">
+            {t(dictionary, "admin.moderation.moderation")}
+          </p>
           <h1 className="mt-1 text-3xl font-semibold text-neutral-950">
-            Review Queue
+            {t(dictionary, "admin.moderation.reviewQueue")}
           </h1>
         </div>
         <dl className="grid grid-cols-2 gap-3 text-sm sm:min-w-72">
           <div className="rounded-md bg-white px-4 py-3 shadow-sm ring-1 ring-neutral-200">
-            <dt className="text-neutral-500">Pending</dt>
+            <dt className="text-neutral-500">{t(dictionary, "admin.moderation.pending")}</dt>
             <dd className="mt-1 text-2xl font-semibold">{pendingPins.length}</dd>
           </div>
           <div className="rounded-md bg-white px-4 py-3 shadow-sm ring-1 ring-neutral-200">
-            <dt className="text-neutral-500">Published</dt>
+            <dt className="text-neutral-500">{t(dictionary, "admin.moderation.published")}</dt>
             <dd className="mt-1 text-2xl font-semibold">{publishedPins.length}</dd>
           </div>
         </dl>
@@ -52,16 +60,22 @@ export default async function AdminModerationPage({
 
       <section className="grid gap-4">
         <div>
-          <h2 className="text-xl font-semibold">Pending Review</h2>
+          <h2 className="text-xl font-semibold">{t(dictionary, "admin.moderation.pendingReview")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Pins waiting for a manual moderation decision.
+            {t(dictionary, "admin.moderation.pendingReviewDescription")}
           </p>
         </div>
 
         {pendingPins.length > 0 ? (
           <div className="grid gap-4">
             {pendingPins.map((pin) => (
-              <ModerationPinCard key={pin.id} pin={pin} mode="pending" />
+              <ModerationPinCard
+                key={pin.id}
+                dictionary={dictionary}
+                locale={locale}
+                mode="pending"
+                pin={pin}
+              />
             ))}
             {pendingQueue.hasMore ? (
               <div>
@@ -69,32 +83,38 @@ export default async function AdminModerationPage({
                   href={`/admin/moderation?cursor=${pendingQueue.nextCursor}`}
                   className="inline-grid h-10 place-items-center rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 transition hover:border-neutral-950"
                 >
-                  Next page
+                  {t(dictionary, "admin.actions.loadMore")}
                 </Link>
               </div>
             ) : null}
           </div>
         ) : (
-          <EmptyState message="No Pins are pending review." />
+          <EmptyState message={t(dictionary, "admin.moderation.emptyPending")} />
         )}
       </section>
 
       <section className="grid gap-4 border-t border-neutral-200 pt-8">
         <div>
-          <h2 className="text-xl font-semibold">Published Pins</h2>
+          <h2 className="text-xl font-semibold">{t(dictionary, "admin.moderation.publishedPins")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Recently published Pins available for removal.
+            {t(dictionary, "admin.moderation.publishedPinsDescription")}
           </p>
         </div>
 
         {publishedPins.length > 0 ? (
           <div className="grid gap-4">
             {publishedPins.map((pin) => (
-              <ModerationPinCard key={pin.id} pin={pin} mode="published" />
+              <ModerationPinCard
+                key={pin.id}
+                dictionary={dictionary}
+                locale={locale}
+                mode="published"
+                pin={pin}
+              />
             ))}
           </div>
         ) : (
-          <EmptyState message="No published Pins are available." />
+          <EmptyState message={t(dictionary, "admin.moderation.emptyPublished")} />
         )}
       </section>
     </div>
@@ -102,9 +122,13 @@ export default async function AdminModerationPage({
 }
 
 function ModerationPinCard({
+  dictionary,
+  locale,
   mode,
   pin,
 }: {
+  dictionary: Dictionary;
+  locale: Locale;
   mode: "pending" | "published";
   pin: ModerationPin;
 }) {
@@ -122,7 +146,7 @@ function ModerationPinCard({
           />
         ) : (
           <div className="grid aspect-[4/3] place-items-center text-sm text-neutral-500">
-            Processed image unavailable
+            {t(dictionary, "admin.moderation.imageUnavailable")}
           </div>
         )}
       </div>
@@ -131,7 +155,7 @@ function ModerationPinCard({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">
-              {pin.status}
+              {t(dictionary, `enums.pinStatus.${pin.status}`)}
             </span>
             {pin.category ? (
               <span className="rounded-md bg-sky-50 px-2 py-1 text-xs font-medium text-sky-800">
@@ -139,12 +163,12 @@ function ModerationPinCard({
               </span>
             ) : (
               <span className="rounded-md bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                Uncategorized
+                {t(dictionary, "common.uncategorized")}
               </span>
             )}
             {pin.category?.isSensitive ? (
               <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
-                Sensitive
+                {t(dictionary, "admin.moderation.sensitive")}
               </span>
             ) : null}
           </div>
@@ -159,11 +183,13 @@ function ModerationPinCard({
         </div>
 
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <InfoItem label="Pin ID">
+          <InfoItem label={t(dictionary, "admin.moderation.pinId")}>
             <span className="break-all font-mono text-xs">{pin.id}</span>
           </InfoItem>
-          <InfoItem label="Created">{formatDate(pin.createdAt)}</InfoItem>
-          <InfoItem label="Uploader">
+          <InfoItem label={t(dictionary, "admin.moderation.created")}>
+            {formatDate(pin.createdAt, locale)}
+          </InfoItem>
+          <InfoItem label={t(dictionary, "admin.moderation.uploader")}>
             <Link
               href={`/users/${pin.owner.username}`}
               className="font-medium text-neutral-950 underline-offset-4 hover:underline"
@@ -172,18 +198,22 @@ function ModerationPinCard({
             </Link>
             <span className="block text-neutral-500">@{pin.owner.username}</span>
           </InfoItem>
-          <InfoItem label="Category">
-            {pin.category?.name ?? "Uncategorized"}
+          <InfoItem label={t(dictionary, "admin.moderation.category")}>
+            {pin.category?.name ?? t(dictionary, "common.uncategorized")}
           </InfoItem>
-          <InfoItem label="Current status">{pin.status}</InfoItem>
-          <InfoItem label="Reports">{pin.reportCount}</InfoItem>
-          <InfoItem label="Size">
-            {pin.width && pin.height ? `${pin.width} x ${pin.height}` : "Unknown"}
+          <InfoItem label={t(dictionary, "admin.moderation.currentStatus")}>
+            {t(dictionary, `enums.pinStatus.${pin.status}`)}
+          </InfoItem>
+          <InfoItem label={t(dictionary, "admin.moderation.reports")}>{pin.reportCount}</InfoItem>
+          <InfoItem label={t(dictionary, "admin.moderation.size")}>
+            {pin.width && pin.height ? `${pin.width} x ${pin.height}` : t(dictionary, "common.unknown")}
           </InfoItem>
         </dl>
 
         <section>
-          <p className="text-sm font-medium text-neutral-950">SafeSearch</p>
+          <p className="text-sm font-medium text-neutral-950">
+            {t(dictionary, "admin.moderation.safeSearch")}
+          </p>
           {moderationResult ? (
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
               <LikelihoodValue label="Adult" value={moderationResult.adultLikelihood} />
@@ -199,20 +229,29 @@ function ModerationPinCard({
               <LikelihoodValue label="Spoof" value={moderationResult.spoofLikelihood} />
             </div>
           ) : (
-            <p className="mt-2 text-sm text-neutral-500">No SafeSearch result.</p>
+            <p className="mt-2 text-sm text-neutral-500">
+              {t(dictionary, "admin.moderation.noSafeSearch")}
+            </p>
           )}
           {moderationResult ? (
             <p className="mt-2 text-xs text-neutral-500">
-              {moderationResult.provider} - {moderationResult.decision}
+              {moderationResult.provider} -{" "}
+              {t(dictionary, `enums.moderationDecision.${moderationResult.decision}`)}
               {moderationResult.reviewedBy ? (
-                <> - reviewed by {moderationResult.reviewedBy.displayName}</>
+                <>
+                  {" "}
+                  -{" "}
+                  {t(dictionary, "admin.moderation.reviewedBy", {
+                    name: moderationResult.reviewedBy.displayName,
+                  })}
+                </>
               ) : null}
             </p>
           ) : null}
         </section>
       </div>
 
-      <ModerationActionPanel mode={mode} pinId={pin.id} />
+      <ModerationActionPanel locale={locale} mode={mode} pinId={pin.id} />
     </article>
   );
 }
@@ -253,8 +292,8 @@ function likelihoodClasses(value: string) {
   return "bg-emerald-50 text-emerald-800";
 }
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
+function formatDate(date: Date, locale: Locale) {
+  return new Intl.DateTimeFormat(locale === "fa" ? "fa-IR" : "en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);

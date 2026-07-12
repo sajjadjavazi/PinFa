@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type BoardCardProps = {
   board: {
@@ -16,9 +18,11 @@ type BoardCardProps = {
       height?: number | null;
     } | null;
   };
+  locale: Locale;
 };
 
-export function BoardCard({ board }: BoardCardProps) {
+export function BoardCard({ board, locale }: BoardCardProps) {
+  const dictionary = getDictionary(locale);
   const imageUrl =
     board.coverPin?.imageFeedUrl ??
     board.coverPin?.imageThumbnailUrl ??
@@ -41,7 +45,7 @@ export function BoardCard({ board }: BoardCardProps) {
         />
       ) : (
         <div className="grid aspect-[4/3] place-items-center rounded-md bg-neutral-100 text-sm text-neutral-500">
-          No Pins
+          {t(dictionary, "board.noPins")}
         </div>
       )}
       <div>
@@ -54,7 +58,8 @@ export function BoardCard({ board }: BoardCardProps) {
           </p>
         ) : null}
         <p className="mt-2 text-sm text-neutral-500">
-          {board.pinCount} Pins - {board.followerCount} followers
+          {t(dictionary, "board.pinCount", { count: board.pinCount })} -{" "}
+          {t(dictionary, "board.followerCount", { count: board.followerCount })}
         </p>
       </div>
     </Link>

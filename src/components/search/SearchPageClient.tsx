@@ -10,6 +10,9 @@ import {
   type ReactNode,
 } from "react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/t";
+import { getDictionary, t } from "@/lib/i18n/t";
 import type {
   SearchAllResponse,
   SearchApiResponse,
@@ -23,23 +26,18 @@ import type {
 
 const searchTypes = ["all", "pins", "boards", "users", "categories"] as const;
 
-const typeLabels: Record<SearchType, string> = {
-  all: "All",
-  boards: "Boards",
-  categories: "Categories",
-  pins: "Pins",
-  users: "Users",
-};
-
 type SearchPageClientProps = {
   initialQuery: string;
   initialType: SearchType;
+  locale: Locale;
 };
 
 export function SearchPageClient({
   initialQuery,
   initialType,
+  locale,
 }: SearchPageClientProps) {
+  const dictionary = getDictionary(locale);
   const [inputValue, setInputValue] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
   const [type, setType] = useState<SearchType>(initialType);
@@ -81,7 +79,7 @@ export function SearchPageClient({
         const data = await response.json();
 
         if (!response.ok) {
-          setError(data.errors?.q ?? data.errors?.search ?? "Search failed.");
+          setError(data.errors?.q ?? data.errors?.search ?? t(dictionary, "search.failed"));
           return;
         }
 
@@ -91,13 +89,13 @@ export function SearchPageClient({
             : data,
         );
       } catch {
-        setError("Search failed. Please try again.");
+        setError(t(dictionary, "search.failedTryAgain"));
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
       }
     },
-    [],
+    [dictionary],
   );
 
   useEffect(() => {
@@ -141,10 +139,10 @@ export function SearchPageClient({
       <section className="border-b border-neutral-200 pb-5">
         <p className="text-sm font-medium text-neutral-500">PinFa</p>
         <h1 className="mt-2 text-3xl font-semibold text-neutral-950">
-          Search
+          {t(dictionary, "search.heading")}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500">
-          Find published Pins, public Boards, active people, and categories.
+          {t(dictionary, "search.intro")}
         </p>
       </section>
 
@@ -152,8 +150,9 @@ export function SearchPageClient({
         <input
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}
-          placeholder="Search Pins, Boards, Users, or Categories"
-          aria-label="Search PinFa"
+          placeholder={t(dictionary, "search.placeholder")}
+          aria-label={t(dictionary, "nav.search")}
+          dir="auto"
           className="h-11 flex-1 rounded-md border border-neutral-300 bg-white px-3 text-sm outline-none transition focus:border-neutral-950"
         />
         <button
@@ -161,7 +160,7 @@ export function SearchPageClient({
           disabled={!canSubmit}
           className="h-11 rounded-md bg-neutral-950 px-5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
         >
-          Search
+          {t(dictionary, "search.heading")}
         </button>
       </form>
 
@@ -177,24 +176,33 @@ export function SearchPageClient({
                 : "rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition hover:border-neutral-950"
             }
           >
-            {typeLabels[searchType]}
+            {getSearchTypeLabel(dictionary, searchType)}
             {counts[searchType] !== null ? ` (${counts[searchType]})` : ""}
           </button>
         ))}
       </nav>
 
       {query.trim().length === 0 ? (
-        <SearchState title="Start with a search" message="Enter at least 2 characters." />
+        <SearchState
+          title={t(dictionary, "search.emptyQueryTitle")}
+          message={t(dictionary, "search.emptyQueryMessage")}
+        />
       ) : query.trim().length < 2 ? (
-        <SearchState title="Keep typing" message="Search needs at least 2 characters." />
+        <SearchState
+          title={t(dictionary, "search.shortQueryTitle")}
+          message={t(dictionary, "search.shortQueryMessage")}
+        />
       ) : isLoading ? (
         <SearchLoading />
       ) : error ? (
-        <SearchState title="Search could not load" message={error} />
+        <SearchState title={t(dictionary, "search.loadFailedTitle")} message={error} />
       ) : results ? (
-        <SearchResults results={results} />
+        <SearchResults dictionary={dictionary} results={results} />
       ) : (
-        <SearchState title="No search yet" message="Submit a query to search PinFa." />
+        <SearchState
+          title={t(dictionary, "search.noSearchTitle")}
+          message={t(dictionary, "search.noSearchMessage")}
+        />
       )}
 
       {results && results.type !== "all" && results.hasMore ? (
@@ -204,38 +212,60 @@ export function SearchPageClient({
           disabled={isLoadingMore}
           className="mx-auto h-11 rounded-md bg-neutral-950 px-5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
         >
-          {isLoadingMore ? "Loading..." : "Load more"}
+          {isLoadingMore ? t(dictionary, "search.loading") : t(dictionary, "search.loadMore")}
         </button>
       ) : null}
     </main>
   );
 }
 
-function SearchResults({ results }: { results: SearchApiResponse }) {
+function SearchResults({
+  dictionary,
+  results,
+}: {
+  dictionary: Dictionary;
+  results: SearchApiResponse;
+}) {
   if (results.type === "all") {
-    return <GroupedResults results={results} />;
+    return <GroupedResults dictionary={dictionary} results={results} />;
   }
 
   if (results.items.length === 0) {
-    return <SearchState title="No results" message="Try a different query." />;
+    return (
+      <SearchState
+        title={t(dictionary, "search.noResults")}
+        message={t(dictionary, "search.tryDifferent")}
+      />
+    );
   }
 
   if (results.type === "pins") {
-    return <PinResults pins={results.items as SearchPinResult[]} />;
+    return <PinResults dictionary={dictionary} pins={results.items as SearchPinResult[]} />;
   }
 
   if (results.type === "boards") {
-    return <BoardResults boards={results.items as SearchBoardResult[]} />;
+    return <BoardResults boards={results.items as SearchBoardResult[]} dictionary={dictionary} />;
   }
 
   if (results.type === "users") {
-    return <UserResults users={results.items as SearchUserResult[]} />;
+    return <UserResults dictionary={dictionary} users={results.items as SearchUserResult[]} />;
   }
 
-  return <CategoryResults categories={results.items as SearchCategoryResult[]} />;
+  return (
+    <CategoryResults
+      categories={results.items as SearchCategoryResult[]}
+      dictionary={dictionary}
+    />
+  );
 }
 
-function GroupedResults({ results }: { results: SearchAllResponse }) {
+function GroupedResults({
+  dictionary,
+  results,
+}: {
+  dictionary: Dictionary;
+  results: SearchAllResponse;
+}) {
   const hasAnyResult =
     results.results.pins.length +
       results.results.boards.length +
@@ -244,22 +274,31 @@ function GroupedResults({ results }: { results: SearchAllResponse }) {
     0;
 
   if (!hasAnyResult) {
-    return <SearchState title="No results" message="Try a different query." />;
+    return (
+      <SearchState
+        title={t(dictionary, "search.noResults")}
+        message={t(dictionary, "search.tryDifferent")}
+      />
+    );
   }
 
   return (
     <div className="grid gap-10">
-      <ResultSection title="Pins" count={results.counts.pins}>
-        <PinResults pins={results.results.pins} />
+      <ResultSection count={results.counts.pins} dictionary={dictionary} title={t(dictionary, "search.pins")}>
+        <PinResults dictionary={dictionary} pins={results.results.pins} />
       </ResultSection>
-      <ResultSection title="Boards" count={results.counts.boards}>
-        <BoardResults boards={results.results.boards} />
+      <ResultSection count={results.counts.boards} dictionary={dictionary} title={t(dictionary, "search.boards")}>
+        <BoardResults boards={results.results.boards} dictionary={dictionary} />
       </ResultSection>
-      <ResultSection title="Users" count={results.counts.users}>
-        <UserResults users={results.results.users} />
+      <ResultSection count={results.counts.users} dictionary={dictionary} title={t(dictionary, "search.users")}>
+        <UserResults dictionary={dictionary} users={results.results.users} />
       </ResultSection>
-      <ResultSection title="Categories" count={results.counts.categories}>
-        <CategoryResults categories={results.results.categories} />
+      <ResultSection
+        count={results.counts.categories}
+        dictionary={dictionary}
+        title={t(dictionary, "search.categories")}
+      >
+        <CategoryResults categories={results.results.categories} dictionary={dictionary} />
       </ResultSection>
     </div>
   );
@@ -268,10 +307,12 @@ function GroupedResults({ results }: { results: SearchAllResponse }) {
 function ResultSection({
   children,
   count,
+  dictionary,
   title,
 }: {
   children: ReactNode;
   count: number;
+  dictionary: Dictionary;
   title: string;
 }) {
   if (count === 0) {
@@ -282,16 +323,29 @@ function ResultSection({
     <section className="grid gap-4">
       <div className="flex items-end justify-between gap-4 border-b border-neutral-200 pb-2">
         <h2 className="text-lg font-semibold text-neutral-950">{title}</h2>
-        <span className="text-sm text-neutral-500">{count} results</span>
+        <span className="text-sm text-neutral-500">
+          {t(dictionary, "search.countResults", { count })}
+        </span>
       </div>
       {children}
     </section>
   );
 }
 
-function PinResults({ pins }: { pins: SearchPinResult[] }) {
+function PinResults({
+  dictionary,
+  pins,
+}: {
+  dictionary: Dictionary;
+  pins: SearchPinResult[];
+}) {
   if (pins.length === 0) {
-    return <SearchState title="No Pins" message="No matching published Pins." />;
+    return (
+      <SearchState
+        title={t(dictionary, "search.noPins")}
+        message={t(dictionary, "search.noPinsMessage")}
+      />
+    );
   }
 
   return (
@@ -304,19 +358,20 @@ function PinResults({ pins }: { pins: SearchPinResult[] }) {
           <Link href={`/pins/${pin.id}`} className="group block">
             <SearchImage
               alt={pin.title}
+              dictionary={dictionary}
               height={pin.height}
               src={pin.imageUrl}
               width={pin.width}
             />
             <div className="grid gap-2 p-3">
               <p className="text-xs font-medium text-neutral-500">
-                {pin.category?.name ?? "Uncategorized"}
+                {pin.category?.name ?? t(dictionary, "common.uncategorized")}
               </p>
               <h2 className="text-sm font-semibold leading-6 text-neutral-950 group-hover:underline">
                 {pin.title}
               </h2>
               <p className="text-xs text-neutral-500">
-                by {pin.owner.displayName}
+                {t(dictionary, "search.byOwner", { owner: pin.owner.displayName })}
               </p>
             </div>
           </Link>
@@ -326,9 +381,20 @@ function PinResults({ pins }: { pins: SearchPinResult[] }) {
   );
 }
 
-function BoardResults({ boards }: { boards: SearchBoardResult[] }) {
+function BoardResults({
+  boards,
+  dictionary,
+}: {
+  boards: SearchBoardResult[];
+  dictionary: Dictionary;
+}) {
   if (boards.length === 0) {
-    return <SearchState title="No Boards" message="No matching public Boards." />;
+    return (
+      <SearchState
+        title={t(dictionary, "search.noBoards")}
+        message={t(dictionary, "search.noBoardsMessage")}
+      />
+    );
   }
 
   return (
@@ -339,7 +405,13 @@ function BoardResults({ boards }: { boards: SearchBoardResult[] }) {
           className="overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm"
         >
           <Link href={`/boards/${board.id}`} className="group block">
-            <SearchImage alt={board.title} height={3} src={board.coverImageUrl} width={4} />
+            <SearchImage
+              alt={board.title}
+              dictionary={dictionary}
+              height={3}
+              src={board.coverImageUrl}
+              width={4}
+            />
             <div className="grid gap-2 p-4">
               <h2 className="font-semibold text-neutral-950 group-hover:underline">
                 {board.title}
@@ -350,10 +422,11 @@ function BoardResults({ boards }: { boards: SearchBoardResult[] }) {
                 </p>
               ) : null}
               <p className="text-xs text-neutral-500">
-                {board.pinCount} Pins - {board.followerCount} followers
+                {t(dictionary, "board.pinCount", { count: board.pinCount })} -{" "}
+                {t(dictionary, "board.followerCount", { count: board.followerCount })}
               </p>
               <p className="text-xs text-neutral-500">
-                by {board.owner.displayName}
+                {t(dictionary, "search.byOwner", { owner: board.owner.displayName })}
               </p>
             </div>
           </Link>
@@ -363,9 +436,20 @@ function BoardResults({ boards }: { boards: SearchBoardResult[] }) {
   );
 }
 
-function UserResults({ users }: { users: SearchUserResult[] }) {
+function UserResults({
+  dictionary,
+  users,
+}: {
+  dictionary: Dictionary;
+  users: SearchUserResult[];
+}) {
   if (users.length === 0) {
-    return <SearchState title="No Users" message="No matching active Users." />;
+    return (
+      <SearchState
+        title={t(dictionary, "search.noUsers")}
+        message={t(dictionary, "search.noUsersMessage")}
+      />
+    );
   }
 
   return (
@@ -390,7 +474,7 @@ function UserResults({ users }: { users: SearchUserResult[] }) {
               </p>
             ) : null}
             <p className="mt-2 text-xs text-neutral-500">
-              {user.followerCount} followers
+              {t(dictionary, "profile.followerCount", { count: user.followerCount })}
             </p>
           </div>
         </Link>
@@ -401,14 +485,16 @@ function UserResults({ users }: { users: SearchUserResult[] }) {
 
 function CategoryResults({
   categories,
+  dictionary,
 }: {
   categories: SearchCategoryResult[];
+  dictionary: Dictionary;
 }) {
   if (categories.length === 0) {
     return (
       <SearchState
-        title="No Categories"
-        message="No matching active Categories."
+        title={t(dictionary, "search.noCategories")}
+        message={t(dictionary, "search.noCategoriesMessage")}
       />
     );
   }
@@ -438,11 +524,13 @@ function CategoryResults({
 
 function SearchImage({
   alt,
+  dictionary,
   height,
   src,
   width,
 }: {
   alt: string;
+  dictionary: Dictionary;
   height: number | null;
   src: string | null | undefined;
   width: number | null;
@@ -455,7 +543,7 @@ function SearchImage({
         className="grid w-full place-items-center bg-neutral-100 text-sm text-neutral-500"
         style={{ aspectRatio }}
       >
-        Image unavailable
+        {t(dictionary, "search.imageUnavailable")}
       </div>
     );
   }
@@ -472,6 +560,10 @@ function SearchImage({
       style={{ aspectRatio }}
     />
   );
+}
+
+function getSearchTypeLabel(dictionary: Dictionary, type: SearchType) {
+  return t(dictionary, `search.${type}`);
 }
 
 function SearchLoading() {

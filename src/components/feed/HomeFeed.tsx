@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FeedPinCard } from "@/components/feed/FeedPinCard";
 import { NativeAdCard } from "@/components/feed/NativeAdCard";
 import { EmptyState } from "@/components/ui/EmptyState";
+import type { Locale } from "@/lib/i18n/config";
 import type { FeedItem, HomeFeedPage } from "@/lib/feed";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type BoardOption = {
   id: string;
@@ -17,6 +19,7 @@ type HomeFeedProps = {
   initialPage: HomeFeedPage;
   initialError?: string | null;
   isAuthenticated: boolean;
+  locale: Locale;
 };
 
 export function HomeFeed({
@@ -24,7 +27,9 @@ export function HomeFeed({
   initialError = null,
   initialPage,
   isAuthenticated,
+  locale,
 }: HomeFeedProps) {
+  const dictionary = getDictionary(locale);
   const [items, setItems] = useState(initialPage.items);
   const [nextCursor, setNextCursor] = useState(initialPage.nextCursor);
   const [hasMore, setHasMore] = useState(initialPage.hasMore);
@@ -46,7 +51,7 @@ export function HomeFeed({
       );
 
       if (!response.ok) {
-        setError("Feed could not load more Pins.");
+        setError(t(dictionary, "feed.loadMoreFailed"));
         return;
       }
 
@@ -56,11 +61,11 @@ export function HomeFeed({
       setNextCursor(page.nextCursor);
       setHasMore(page.hasMore);
     } catch {
-      setError("Feed could not load more Pins.");
+      setError(t(dictionary, "feed.loadMoreFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, nextCursor]);
+  }, [dictionary, isLoading, nextCursor]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -90,7 +95,7 @@ export function HomeFeed({
       return (
         <div className="grid gap-4 rounded-md border border-red-200 bg-red-50 px-4 py-8 text-center">
           <h2 className="text-base font-semibold text-red-900">
-            Home Feed could not load.
+            {t(dictionary, "feed.homeCouldNotLoad")}
           </h2>
           <p className="mx-auto max-w-md text-sm leading-6 text-red-700">
             {error}
@@ -100,7 +105,7 @@ export function HomeFeed({
             onClick={() => window.location.reload()}
             className="mx-auto h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white transition hover:bg-red-800"
           >
-            Retry
+            {t(dictionary, "common.retry")}
           </button>
         </div>
       );
@@ -109,9 +114,11 @@ export function HomeFeed({
     return (
       <EmptyState
         actionHref={isAuthenticated ? "/upload" : "/auth/register"}
-        actionLabel={isAuthenticated ? "Upload a Pin" : "Create an account"}
-        description="Published Pins will appear here after image processing and moderation."
-        title="No published Pins yet"
+        actionLabel={
+          isAuthenticated ? t(dictionary, "feed.uploadPin") : t(dictionary, "feed.createAccount")
+        }
+        description={t(dictionary, "feed.emptyDescription")}
+        title={t(dictionary, "feed.emptyTitle")}
       />
     );
   }
@@ -125,11 +132,12 @@ export function HomeFeed({
             boards={boards}
             isAuthenticated={isAuthenticated}
             item={item}
+            locale={locale}
           />
         ))}
       </div>
 
-      {isLoading ? <FeedSkeletonGrid /> : null}
+      {isLoading ? <FeedSkeletonGrid label={t(dictionary, "feed.loadingMorePins")} /> : null}
 
       {error ? (
         <div className="flex flex-col gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:flex-row sm:items-center sm:justify-between">
@@ -139,7 +147,7 @@ export function HomeFeed({
             onClick={() => void loadMore()}
             className="h-9 rounded-md bg-red-700 px-3 text-sm font-medium text-white transition hover:bg-red-800"
           >
-            Retry
+            {t(dictionary, "common.retry")}
           </button>
         </div>
       ) : null}
@@ -153,11 +161,13 @@ export function HomeFeed({
             disabled={isLoading}
             className="mx-auto h-11 rounded-md bg-neutral-950 px-5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
           >
-            {isLoading ? "Loading..." : "Load more"}
+            {isLoading ? t(dictionary, "feed.loading") : t(dictionary, "feed.loadMore")}
           </button>
         </>
       ) : (
-        <p className="text-center text-sm text-neutral-500">You are caught up.</p>
+        <p className="text-center text-sm text-neutral-500">
+          {t(dictionary, "feed.caughtUp")}
+        </p>
       )}
     </section>
   );
@@ -184,33 +194,36 @@ function FeedItemCard({
   boards,
   isAuthenticated,
   item,
+  locale,
 }: {
   boards: BoardOption[];
   isAuthenticated: boolean;
   item: FeedItem;
+  locale: Locale;
 }) {
   if (item.type === "PIN") {
     return (
       <FeedPinCard
         boards={boards}
         isAuthenticated={isAuthenticated}
+        locale={locale}
         pin={item.pin}
       />
     );
   }
 
   if (item.type === "AD") {
-    return <NativeAdCard ad={item.ad} />;
+    return <NativeAdCard ad={item.ad} locale={locale} />;
   }
 
   return null;
 }
 
-function FeedSkeletonGrid() {
+function FeedSkeletonGrid({ label }: { label: string }) {
   return (
     <div
       className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5"
-      aria-label="Loading more Pins"
+      aria-label={label}
     >
       {Array.from({ length: 10 }).map((_, index) => (
         <div

@@ -8,6 +8,7 @@ This list is for beta launch planning and should be reviewed before each release
 - There is no production object storage migration yet.
 - Image processing and SafeSearch moderation run in the upload request path instead of a retryable worker queue.
 - There is no background retry dashboard for failed image processing or moderation provider failures.
+- On Windows, `prisma generate` can fail with `EPERM` if a running local Next.js/Prisma process locks `query_engine-windows.dll.node`; stop the local dev server and rerun generation.
 
 ## Moderation And Safety
 
@@ -36,7 +37,7 @@ This list is for beta launch planning and should be reviewed before each release
 
 ## UX And Localization
 
-- Most UI copy is English and should be localized before a Persian-language beta.
+- Bilingual Persian/English UI is implemented, but final Persian copy review by a native product reviewer is still recommended before public launch.
 - Admin pages are responsive enough for basic use but are optimized for desktop moderation.
 - Notification delivery is in-app only. There is no push, email, or SMS notification channel.
 

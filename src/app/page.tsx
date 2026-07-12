@@ -8,26 +8,33 @@ import {
   recordFeedViewEvents,
   type HomeFeedPage,
 } from "@/lib/feed";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, t } from "@/lib/i18n/t";
 import { getNotificationSummary } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  alternates: {
-    canonical: "/",
-  },
-  description:
-    "Explore a mobile-first visual feed of published Pins, Boards, and inspiration on PinFa.",
-  openGraph: {
-    description:
-      "Explore a mobile-first visual feed of published Pins, Boards, and inspiration on PinFa.",
-    title: "PinFa Home Feed",
-    type: "website",
-    url: "/",
-  },
-  title: "Home Feed",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
+  const title = t(dictionary, "meta.homeTitle");
+  const description = t(dictionary, "meta.homeDescription");
+
+  return {
+    alternates: {
+      canonical: "/",
+    },
+    description,
+    openGraph: {
+      description,
+      title: `${title} | PinFa`,
+      type: "website",
+      url: "/",
+    },
+    title,
+  };
+}
 
 const emptyHomeFeedPage: HomeFeedPage = {
   hasMore: false,
@@ -37,6 +44,8 @@ const emptyHomeFeedPage: HomeFeedPage = {
 };
 
 export default async function Home() {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   let currentUser: Awaited<ReturnType<typeof getCurrentUser>> = null;
   let feedError: string | null = null;
 
@@ -54,7 +63,7 @@ export default async function Home() {
       logAnalyticsError("home.feed_initial.failed", error, {
         userId: currentUser?.id ?? null,
       });
-      feedError = "Please check the database connection and try again.";
+      feedError = t(dictionary, "feed.loadMoreFailed");
       return emptyHomeFeedPage;
     }),
     currentUser
@@ -104,6 +113,7 @@ export default async function Home() {
     <>
       <AppHeader
         currentUser={currentUser}
+        locale={locale}
         notificationSummary={notificationSummary}
       />
       <main className="mx-auto grid min-h-screen w-full max-w-[1600px] gap-4 px-2 py-3 sm:px-4 lg:px-6">
@@ -112,6 +122,7 @@ export default async function Home() {
           initialError={feedError}
           initialPage={initialPage}
           isAuthenticated={Boolean(currentUser)}
+          locale={locale}
         />
       </main>
     </>

@@ -2,11 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type ApiErrors = Record<string, string>;
 
-export function CreateBoardForm() {
+export function CreateBoardForm({ locale }: { locale: Locale }) {
   const router = useRouter();
+  const dictionary = getDictionary(locale);
   const [errors, setErrors] = useState<ApiErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,7 +34,7 @@ export function CreateBoardForm() {
     setIsSubmitting(false);
 
     if (!response.ok) {
-      setErrors(result.errors ?? { form: "Board creation failed." });
+      setErrors(result.errors ?? { form: t(dictionary, "board.createFailed") });
       return;
     }
 
@@ -43,7 +46,7 @@ export function CreateBoardForm() {
     <form onSubmit={handleSubmit} className="grid gap-5">
       <div className="grid gap-2">
         <label htmlFor="title" className="text-sm font-medium">
-          Title
+          {t(dictionary, "common.title")}
         </label>
         <input
           id="title"
@@ -58,7 +61,7 @@ export function CreateBoardForm() {
 
       <div className="grid gap-2">
         <label htmlFor="description" className="text-sm font-medium">
-          Description
+          {t(dictionary, "common.description")}
         </label>
         <textarea
           id="description"
@@ -70,7 +73,7 @@ export function CreateBoardForm() {
         <FieldError message={errors.description} />
       </div>
 
-      <p className="text-sm text-neutral-500">Boards are public in this MVP.</p>
+      <p className="text-sm text-neutral-500">{t(dictionary, "board.publicMvp")}</p>
       <FieldError message={errors.auth ?? errors.form} />
 
       <button
@@ -78,7 +81,7 @@ export function CreateBoardForm() {
         disabled={isSubmitting}
         className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSubmitting ? "Creating..." : "Create Board"}
+        {isSubmitting ? t(dictionary, "board.creating") : t(dictionary, "board.create")}
       </button>
     </form>
   );

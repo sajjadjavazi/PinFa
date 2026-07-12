@@ -7,6 +7,10 @@ import {
   NotificationReadButton,
 } from "@/components/notifications/NotificationReadButton";
 import { getCurrentUser } from "@/lib/auth";
+import type { Locale } from "@/lib/i18n/config";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import type { Dictionary } from "@/lib/i18n/t";
+import { getDictionary, t } from "@/lib/i18n/t";
 import {
   getNotificationsForUser,
   getNotificationSummary,
@@ -15,15 +19,22 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  robots: {
-    follow: false,
-    index: false,
-  },
-  title: "Notifications",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
+
+  return {
+    robots: {
+      follow: false,
+      index: false,
+    },
+    title: t(dictionary, "notifications.title"),
+  };
+}
 
 export default async function NotificationsPage() {
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -43,20 +54,28 @@ export default async function NotificationsPage() {
 
   return (
     <>
-      <AppHeader currentUser={currentUser} notificationSummary={summary} />
+      <AppHeader
+        currentUser={currentUser}
+        locale={locale}
+        notificationSummary={summary}
+      />
       <main className="mx-auto grid min-h-screen w-full max-w-4xl gap-8 px-6 py-8">
         <section className="flex flex-col gap-5 border-b border-neutral-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-medium text-neutral-500">PinFa</p>
             <h1 className="mt-2 text-3xl font-semibold text-neutral-950">
-              Notifications
+              {t(dictionary, "notifications.title")}
             </h1>
             <p className="mt-2 text-sm text-neutral-500">
-              {summary.unreadCount} unread notifications.
+              {t(dictionary, "notifications.unread", {
+                count: summary.unreadCount,
+              })}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {summary.unreadCount > 0 ? <NotificationReadAllButton /> : null}
+            {summary.unreadCount > 0 ? (
+              <NotificationReadAllButton locale={locale} />
+            ) : null}
           </div>
         </section>
 
@@ -65,13 +84,15 @@ export default async function NotificationsPage() {
             {notifications.map((notification) => (
               <NotificationCard
                 key={notification.id}
+                dictionary={dictionary}
+                locale={locale}
                 notification={notification}
               />
             ))}
           </section>
         ) : (
           <div className="rounded-md border border-neutral-200 bg-white px-4 py-10 text-center text-sm text-neutral-500">
-            No notifications yet.
+            {t(dictionary, "notifications.empty")}
           </div>
         )}
       </main>
@@ -80,8 +101,12 @@ export default async function NotificationsPage() {
 }
 
 function NotificationCard({
+  dictionary,
+  locale,
   notification,
 }: {
+  dictionary: Dictionary;
+  locale: Locale;
   notification: NotificationListItem;
 }) {
   return (
@@ -95,20 +120,29 @@ function NotificationCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-medium text-neutral-500">
-            {notification.type}
+            {t(dictionary, `notifications.item.${notification.type}`, {
+              actor: notification.actor?.displayName ?? "",
+            })}
           </p>
-          <p className="mt-1 text-neutral-950">{notification.message}</p>
+          <p className="mt-1 text-neutral-950">
+            {formatNotificationMessage(notification, dictionary)}
+          </p>
           {notification.actor ? (
             <p className="mt-1 text-xs text-neutral-500">
-              From {notification.actor.displayName} (@{notification.actor.username})
+              {t(dictionary, "notifications.from", {
+                name: notification.actor.displayName,
+                username: notification.actor.username,
+              })}
             </p>
           ) : null}
           <p className="mt-2 text-xs text-neutral-500">
-            {new Date(notification.createdAt).toLocaleString()}
+            {new Date(notification.createdAt).toLocaleString(
+              locale === "fa" ? "fa-IR" : "en-US",
+            )}
           </p>
         </div>
         {!notification.isRead ? (
-          <NotificationReadButton notificationId={notification.id} />
+          <NotificationReadButton locale={locale} notificationId={notification.id} />
         ) : null}
       </div>
 
@@ -117,9 +151,22 @@ function NotificationCard({
           href={notification.href}
           className="w-fit text-sm font-medium text-neutral-950 underline-offset-4 hover:underline"
         >
-          Open related item
+          {t(dictionary, "notifications.openRelated")}
         </Link>
       ) : null}
     </article>
   );
+}
+
+function formatNotificationMessage(
+  notification: NotificationListItem,
+  dictionary: Dictionary,
+) {
+  const localized = t(dictionary, `notifications.item.${notification.type}`, {
+    actor: notification.actor?.displayName ?? "",
+  });
+
+  return localized.startsWith("notifications.item.")
+    ? notification.message
+    : localized;
 }

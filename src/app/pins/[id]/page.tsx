@@ -7,6 +7,8 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { PinSocialActions } from "@/components/social/PinSocialActions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
+import { getCurrentLocale } from "@/lib/i18n/get-locale";
+import { getDictionary, t } from "@/lib/i18n/t";
 import { applyCategoryInterestSignal } from "@/lib/interest-signals";
 import { prisma } from "@/lib/prisma";
 import { publicProfileSelect } from "@/lib/user-selects";
@@ -21,6 +23,8 @@ export async function generateMetadata({
   params,
 }: PinDetailPageProps): Promise<Metadata> {
   const { id } = await params;
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const pin = await prisma.pin.findFirst({
     where: {
       id,
@@ -50,7 +54,7 @@ export async function generateMetadata({
 
   if (!pin) {
     return {
-      title: "Pin not available",
+      title: t(dictionary, "pin.pinNotAvailable"),
       robots: {
         follow: false,
         index: false,
@@ -60,9 +64,10 @@ export async function generateMetadata({
 
   const description =
     pin.description?.trim() ||
-    `A visual idea by ${pin.owner.displayName}${
-      pin.category ? ` in ${pin.category.name}` : ""
-    } on PinFa.`;
+    t(dictionary, "meta.pinFallbackDescription", {
+      category: pin.category ? ` ${pin.category.name}` : "",
+      owner: pin.owner.displayName,
+    });
   const imageUrl =
     pin.imageDetailUrl ?? pin.imageFeedUrl ?? pin.imageThumbnailUrl ?? undefined;
 
@@ -99,6 +104,8 @@ export async function generateMetadata({
 
 export default async function PinDetailPage({ params }: PinDetailPageProps) {
   const { id } = await params;
+  const locale = await getCurrentLocale();
+  const dictionary = getDictionary(locale);
   const [pin, currentUser] = await Promise.all([
     prisma.pin.findUnique({
       where: {
@@ -200,7 +207,7 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
 
   return (
     <>
-    <AppHeader currentUser={currentUser} />
+    <AppHeader currentUser={currentUser} locale={locale} />
     <main className="mx-auto grid min-h-screen w-full max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:px-8">
       <section>
         {imageUrl ? (
@@ -215,7 +222,7 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
           />
         ) : (
           <div className="grid aspect-[4/3] place-items-center rounded-md bg-neutral-100 text-sm text-neutral-500">
-            Image unavailable
+            {t(dictionary, "common.imageUnavailable")}
           </div>
         )}
       </section>
@@ -223,13 +230,15 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
       <aside className="grid content-start gap-6">
         {pin.status !== "PUBLISHED" ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            This Pin is {pin.status.toLowerCase()} and is not public.
+            {t(dictionary, "pin.nonPublic", {
+              status: t(dictionary, `enums.pinStatus.${pin.status}`),
+            })}
           </div>
         ) : null}
 
         <section>
           <p className="text-sm text-neutral-500">
-            {pin.category?.name ?? "Uncategorized"}
+            {pin.category?.name ?? t(dictionary, "common.uncategorized")}
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-neutral-950">
             {pin.title}
@@ -264,6 +273,7 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
               initialReportCount={pin.reportCount}
               initialShareCount={pin.shareCount}
               isAuthenticated={Boolean(currentUser)}
+              locale={locale}
               pinId={pin.id}
             />
           </section>
@@ -272,13 +282,13 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
         {pin.status === "PUBLISHED" ? (
           <section className="border-t border-neutral-200 pt-6">
             {currentUser ? (
-              <SaveToBoardForm boards={boards} pinId={pin.id} />
+              <SaveToBoardForm boards={boards} locale={locale} pinId={pin.id} />
             ) : (
               <Link
                 href="/auth/login"
                 className="grid h-10 place-items-center rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800"
               >
-                Log in to save
+                {t(dictionary, "pin.logInToSave")}
               </Link>
             )}
           </section>
@@ -286,33 +296,37 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
 
         <dl className="grid grid-cols-2 gap-4 border-t border-neutral-200 pt-6 text-sm">
           <div>
-            <dt className="font-medium text-neutral-950">Status</dt>
-            <dd className="mt-1 text-neutral-600">{pin.status}</dd>
-          </div>
-          <div>
-            <dt className="font-medium text-neutral-950">File type</dt>
+            <dt className="font-medium text-neutral-950">{t(dictionary, "common.status")}</dt>
             <dd className="mt-1 text-neutral-600">
-              {pin.imageAsset?.mimeType ?? "Unknown"}
+              {t(dictionary, `enums.pinStatus.${pin.status}`)}
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-950">Image asset</dt>
+            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.fileType")}</dt>
             <dd className="mt-1 text-neutral-600">
-              {pin.imageAsset?.status ?? "Unknown"}
+              {pin.imageAsset?.mimeType ?? t(dictionary, "common.unknown")}
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-950">Dimensions</dt>
+            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.imageAsset")}</dt>
             <dd className="mt-1 text-neutral-600">
-              {pin.width && pin.height ? `${pin.width} x ${pin.height}` : "Pending"}
+              {pin.imageAsset?.status ?? t(dictionary, "common.unknown")}
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-950">Saves</dt>
+            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.dimensions")}</dt>
+            <dd className="mt-1 text-neutral-600">
+              {pin.width && pin.height
+                ? `${pin.width} x ${pin.height}`
+                : t(dictionary, "pin.pending")}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.saves")}</dt>
             <dd className="mt-1 text-neutral-600">{pin.saveCount}</dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-950">Reports</dt>
+            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.reports")}</dt>
             <dd className="mt-1 text-neutral-600">{pin.reportCount}</dd>
           </div>
         </dl>

@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type ApiErrors = Record<string, string>;
 
-export function RegisterForm() {
+export function RegisterForm({ locale }: { locale: Locale }) {
   const router = useRouter();
+  const dictionary = getDictionary(locale);
   const [errors, setErrors] = useState<ApiErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,7 +39,7 @@ export function RegisterForm() {
     setIsSubmitting(false);
 
     if (!response.ok) {
-      setErrors(result.errors ?? { form: "Registration failed." });
+      setErrors(result.errors ?? { form: t(dictionary, "auth.registrationFailed") });
       return;
     }
 
@@ -48,7 +51,7 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit} className="grid gap-5">
       <div className="grid gap-2">
         <label htmlFor="username" className="text-sm font-medium">
-          Username
+          {t(dictionary, "auth.username")}
         </label>
         <input
           id="username"
@@ -58,6 +61,7 @@ export function RegisterForm() {
           minLength={3}
           maxLength={30}
           pattern="[a-zA-Z0-9_]+"
+          dir="ltr"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.username} />
@@ -65,7 +69,7 @@ export function RegisterForm() {
 
       <div className="grid gap-2">
         <label htmlFor="displayName" className="text-sm font-medium">
-          Display name
+          {t(dictionary, "auth.displayName")}
         </label>
         <input
           id="displayName"
@@ -81,13 +85,14 @@ export function RegisterForm() {
 
       <div className="grid gap-2">
         <label htmlFor="email" className="text-sm font-medium">
-          Email
+          {t(dictionary, "auth.email")}
         </label>
         <input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
+          dir="ltr"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.email} />
@@ -95,13 +100,14 @@ export function RegisterForm() {
 
       <div className="grid gap-2">
         <label htmlFor="phone" className="text-sm font-medium">
-          Phone
+          {t(dictionary, "auth.phone")}
         </label>
         <input
           id="phone"
           name="phone"
           type="tel"
           autoComplete="tel"
+          dir="ltr"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.phone ?? errors.contact} />
@@ -109,7 +115,7 @@ export function RegisterForm() {
 
       <div className="grid gap-2">
         <label htmlFor="password" className="text-sm font-medium">
-          Password
+          {t(dictionary, "auth.password")}
         </label>
         <input
           id="password"
@@ -119,6 +125,7 @@ export function RegisterForm() {
           required
           minLength={8}
           maxLength={128}
+          dir="ltr"
           className="h-11 rounded-md border border-neutral-300 px-3 outline-none transition focus:border-neutral-950"
         />
         <FieldError message={errors.password} />
@@ -131,7 +138,7 @@ export function RegisterForm() {
           required
           className="mt-1 h-4 w-4 rounded border-neutral-300"
         />
-        <span>I accept the terms and content policy.</span>
+        <span>{t(dictionary, "auth.terms")}</span>
       </label>
       <FieldError message={errors.termsAccepted} />
       <FieldError message={errors.account ?? errors.form} />
@@ -141,13 +148,15 @@ export function RegisterForm() {
         disabled={isSubmitting}
         className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSubmitting ? "Creating account..." : "Create account"}
+        {isSubmitting
+          ? t(dictionary, "auth.creatingAccount")
+          : t(dictionary, "auth.createAccount")}
       </button>
 
       <p className="text-sm text-neutral-600">
-        Already have an account?{" "}
+        {t(dictionary, "auth.alreadyHaveAccount")}{" "}
         <Link href="/auth/login" className="font-medium text-neutral-950">
-          Log in
+          {t(dictionary, "auth.login")}
         </Link>
       </p>
     </form>

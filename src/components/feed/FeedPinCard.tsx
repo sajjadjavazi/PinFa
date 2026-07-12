@@ -4,6 +4,8 @@ import Link from "next/link";
 import { memo, useState } from "react";
 import { ReportModal } from "@/components/social/ReportModal";
 import type { FeedPinItem } from "@/lib/feed";
+import type { Locale } from "@/lib/i18n/config";
+import { getDictionary, t } from "@/lib/i18n/t";
 
 type BoardOption = {
   id: string;
@@ -14,14 +16,17 @@ type BoardOption = {
 type FeedPinCardProps = {
   boards: BoardOption[];
   isAuthenticated: boolean;
+  locale: Locale;
   pin: FeedPinItem;
 };
 
 function FeedPinCardComponent({
   boards,
   isAuthenticated,
+  locale,
   pin,
 }: FeedPinCardProps) {
+  const dictionary = getDictionary(locale);
   const [isLiked, setIsLiked] = useState(pin.likedByViewer);
   const [isSaved, setIsSaved] = useState(pin.savedByViewer);
   const [likeCount, setLikeCount] = useState(pin.likeCount);
@@ -35,12 +40,12 @@ function FeedPinCardComponent({
 
   async function saveToBoard() {
     if (!isAuthenticated) {
-      setMessage("Log in to save.");
+      setMessage(t(dictionary, "feed.loginToSave"));
       return;
     }
 
     if (!selectedBoardId) {
-      setMessage("Create a Board first.");
+      setMessage(t(dictionary, "feed.createBoardFirst"));
       return;
     }
 
@@ -66,14 +71,14 @@ function FeedPinCardComponent({
           result.errors?.boardId ??
           result.errors?.pin ??
           result.errors?.auth ??
-          "Save failed.",
+          t(dictionary, "feed.saveFailed"),
       );
       return;
     }
 
     setSaveCount(result.pin?.saveCount ?? saveCount + 1);
     setIsSaved(true);
-    setMessage("Saved.");
+    setMessage(t(dictionary, "feed.saved"));
   }
 
   async function toggleLike() {
@@ -95,7 +100,7 @@ function FeedPinCardComponent({
     }
 
     if (!response.ok) {
-      setMessage(result.errors?.pin ?? result.errors?.auth ?? "Action failed.");
+      setMessage(result.errors?.pin ?? result.errors?.auth ?? t(dictionary, "feed.actionFailed"));
       return;
     }
 
@@ -115,7 +120,7 @@ function FeedPinCardComponent({
     setIsSharing(false);
 
     if (!response.ok) {
-      setMessage(result.errors?.pin ?? result.errors?.auth ?? "Share failed.");
+      setMessage(result.errors?.pin ?? result.errors?.auth ?? t(dictionary, "feed.shareFailed"));
       return;
     }
 
@@ -129,12 +134,12 @@ function FeedPinCardComponent({
         });
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(result.url);
-        setMessage("Link copied.");
+        setMessage(t(dictionary, "feed.linkCopied"));
       } else {
         setMessage(result.url);
       }
     } catch {
-      setMessage("Share canceled.");
+      setMessage(t(dictionary, "feed.shareCanceled"));
     }
   }
 
@@ -152,12 +157,12 @@ function FeedPinCardComponent({
         });
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
-        setMessage("Link copied.");
+        setMessage(t(dictionary, "feed.linkCopied"));
       } else {
         setMessage(url);
       }
     } catch {
-      setMessage("Share canceled.");
+      setMessage(t(dictionary, "feed.shareCanceled"));
     } finally {
       setIsSharing(false);
     }
@@ -170,7 +175,7 @@ function FeedPinCardComponent({
           <Link
             href={`/pins/${pin.id}`}
             className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2"
-            aria-label={`Open ${pin.title}`}
+            aria-label={t(dictionary, "feed.openPin", { title: pin.title })}
           >
             <img
               src={pin.imageFeedUrl}
@@ -195,6 +200,7 @@ function FeedPinCardComponent({
             isAuthenticated={isAuthenticated}
             isSaved={isSaved}
             isSaving={isSaving}
+            locale={locale}
             onSave={saveToBoard}
           />
           <ActionMenu
@@ -205,6 +211,7 @@ function FeedPinCardComponent({
             isSaved={isSaved}
             isSaving={isSaving}
             isSharing={isSharing}
+            locale={locale}
             onLike={toggleLike}
             onSave={saveToBoard}
             onShare={isAuthenticated ? sharePin : copyPublicLink}
@@ -244,21 +251,25 @@ function PrimarySaveControl({
   isAuthenticated,
   isSaved,
   isSaving,
+  locale,
   onSave,
 }: {
   boards: BoardOption[];
   isAuthenticated: boolean;
   isSaved: boolean;
   isSaving: boolean;
+  locale: Locale;
   onSave: () => void;
 }) {
+  const dictionary = getDictionary(locale);
+
   if (!isAuthenticated) {
     return (
       <Link
         href="/auth/login"
         className="pointer-events-auto hidden h-9 place-items-center rounded-full bg-neutral-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 md:grid"
       >
-        Save
+        {t(dictionary, "feed.save")}
       </Link>
     );
   }
@@ -269,7 +280,7 @@ function PrimarySaveControl({
         href="/boards/new"
         className="pointer-events-auto hidden h-9 place-items-center rounded-full bg-neutral-950 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 md:grid"
       >
-        Board
+        {t(dictionary, "feed.board")}
       </Link>
     );
   }
@@ -279,10 +290,18 @@ function PrimarySaveControl({
       type="button"
       onClick={onSave}
       disabled={isSaving || isSaved}
-      aria-label={isSaved ? "Pin already saved" : "Save Pin to selected Board"}
+      aria-label={
+        isSaved
+          ? t(dictionary, "feed.alreadySaved")
+          : t(dictionary, "feed.savePinToSelectedBoard")
+      }
       className="pointer-events-auto hidden h-9 rounded-full bg-red-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:bg-neutral-600 md:block"
     >
-      {isSaving ? "Saving" : isSaved ? "Saved" : "Save"}
+      {isSaving
+        ? t(dictionary, "feed.saving")
+        : isSaved
+          ? t(dictionary, "feed.saved")
+          : t(dictionary, "feed.save")}
     </button>
   );
 }
@@ -295,6 +314,7 @@ function ActionMenu({
   isSaved,
   isSaving,
   isSharing,
+  locale,
   onLike,
   onSave,
   onShare,
@@ -309,6 +329,7 @@ function ActionMenu({
   isSaved: boolean;
   isSaving: boolean;
   isSharing: boolean;
+  locale: Locale;
   onLike: () => void;
   onSave: () => void;
   onShare: () => void;
@@ -316,20 +337,23 @@ function ActionMenu({
   selectedBoardId: string;
   setSelectedBoardId: (boardId: string) => void;
 }) {
+  const dictionary = getDictionary(locale);
+
   return (
-    <details className="pointer-events-auto relative ml-auto">
+    <details className="pointer-events-auto relative ms-auto">
       <summary
-        aria-label="Open Pin actions"
+        aria-label={t(dictionary, "feed.openPinActions")}
         className="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-full bg-white/95 text-lg font-semibold leading-none text-neutral-950 shadow-sm transition hover:bg-white [&::-webkit-details-marker]:hidden"
       >
         ...
       </summary>
-      <div className="absolute right-0 z-30 mt-2 grid w-48 gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-sm shadow-xl">
+      <div className="absolute end-0 z-30 mt-2 grid w-48 gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-sm shadow-xl">
         <SaveMenuItem
           boards={boards}
           isAuthenticated={isAuthenticated}
           isSaved={isSaved}
           isSaving={isSaving}
+          locale={locale}
           onSave={onSave}
           selectedBoardId={selectedBoardId}
           setSelectedBoardId={setSelectedBoardId}
@@ -340,14 +364,20 @@ function ActionMenu({
             type="button"
             onClick={onLike}
             disabled={isLiking}
-            aria-label={isLiked ? "Unlike Pin" : "Like Pin"}
+            aria-label={
+              isLiked ? t(dictionary, "social.unlikePin") : t(dictionary, "social.likePin")
+            }
             className={menuButtonClassName}
           >
-            {isLiking ? "Working..." : isLiked ? "Unlike" : "Like"}
+            {isLiking
+              ? t(dictionary, "common.working")
+              : isLiked
+                ? t(dictionary, "social.unlike")
+                : t(dictionary, "social.like")}
           </button>
         ) : (
           <Link href="/auth/login" className={menuLinkClassName}>
-            Like
+            {t(dictionary, "social.like")}
           </Link>
         )}
 
@@ -355,19 +385,22 @@ function ActionMenu({
           type="button"
           onClick={onShare}
           disabled={isSharing}
-          aria-label="Share Pin"
+          aria-label={t(dictionary, "social.share")}
           className={menuButtonClassName}
         >
-          {isSharing ? "Sharing..." : "Share"}
+          {isSharing ? t(dictionary, "social.sharing") : t(dictionary, "social.share")}
         </button>
 
         <ReportModal
-          buttonAriaLabel="Report Pin"
-          buttonLabel="Report"
+          buttonAriaLabel={t(dictionary, "report.reportTarget", {
+            target: t(dictionary, "enums.targetType.PIN"),
+          })}
+          buttonLabel={t(dictionary, "report.report")}
           buttonClassName={menuButtonClassName}
           isAuthenticated={isAuthenticated}
           loginClassName={menuLinkClassName}
-          loginLabel="Report"
+          loginLabel={t(dictionary, "report.report")}
+          locale={locale}
           targetId={pinId}
           targetType="PIN"
         />
@@ -381,6 +414,7 @@ function SaveMenuItem({
   isAuthenticated,
   isSaved,
   isSaving,
+  locale,
   onSave,
   selectedBoardId,
   setSelectedBoardId,
@@ -389,14 +423,17 @@ function SaveMenuItem({
   isAuthenticated: boolean;
   isSaved: boolean;
   isSaving: boolean;
+  locale: Locale;
   onSave: () => void;
   selectedBoardId: string;
   setSelectedBoardId: (boardId: string) => void;
 }) {
+  const dictionary = getDictionary(locale);
+
   if (!isAuthenticated) {
     return (
       <Link href="/auth/login" className={menuLinkClassName}>
-        Save
+        {t(dictionary, "feed.save")}
       </Link>
     );
   }
@@ -404,7 +441,7 @@ function SaveMenuItem({
   if (boards.length === 0) {
     return (
       <Link href="/boards/new" className={menuLinkClassName}>
-        Create Board
+        {t(dictionary, "feed.createBoard")}
       </Link>
     );
   }
@@ -412,7 +449,7 @@ function SaveMenuItem({
   return (
     <div className="grid gap-2 border-b border-neutral-100 pb-2">
       <label className="grid gap-1 text-xs font-medium text-neutral-500">
-        Board
+        {t(dictionary, "feed.board")}
         <select
           value={selectedBoardId}
           onChange={(event) => setSelectedBoardId(event.target.value)}
@@ -429,17 +466,23 @@ function SaveMenuItem({
         type="button"
         onClick={onSave}
         disabled={isSaving || isSaved}
-        aria-label={isSaved ? "Pin already saved" : "Save Pin to Board"}
-        className="h-9 rounded-md bg-neutral-950 px-3 text-left text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
+        aria-label={
+          isSaved ? t(dictionary, "feed.alreadySaved") : t(dictionary, "feed.savePinToBoard")
+        }
+        className="h-9 rounded-md bg-neutral-950 px-3 text-start text-sm font-medium text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:bg-neutral-400"
       >
-        {isSaving ? "Saving..." : isSaved ? "Saved" : "Save to Board"}
+        {isSaving
+          ? t(dictionary, "feed.savingDots")
+          : isSaved
+            ? t(dictionary, "feed.saved")
+            : t(dictionary, "feed.saveToBoard")}
       </button>
     </div>
   );
 }
 
 const menuButtonClassName =
-  "h-9 rounded-md px-3 text-left text-sm font-medium text-neutral-800 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50";
+  "h-9 rounded-md px-3 text-start text-sm font-medium text-neutral-800 transition hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50";
 
 const menuLinkClassName =
   "grid h-9 items-center rounded-md px-3 text-sm font-medium text-neutral-800 transition hover:bg-neutral-100";
