@@ -367,7 +367,7 @@ function PinResults({
               <p className="text-xs font-medium text-neutral-500">
                 {pin.category?.name ?? t(dictionary, "common.uncategorized")}
               </p>
-              <h2 className="text-sm font-semibold leading-6 text-neutral-950 group-hover:underline">
+              <h2 dir="auto" className="text-sm font-semibold leading-6 text-neutral-950 group-hover:underline">
                 {pin.title}
               </h2>
               <p className="text-xs text-neutral-500">
@@ -413,11 +413,11 @@ function BoardResults({
               width={4}
             />
             <div className="grid gap-2 p-4">
-              <h2 className="font-semibold text-neutral-950 group-hover:underline">
+              <h2 dir="auto" className="font-semibold text-neutral-950 group-hover:underline">
                 {board.title}
               </h2>
               {board.description ? (
-                <p className="line-clamp-2 text-sm leading-6 text-neutral-600">
+                <p dir="auto" className="line-clamp-2 text-sm leading-6 text-neutral-600">
                   {board.description}
                 </p>
               ) : null}
@@ -466,10 +466,14 @@ function UserResults({
             size="sm"
           />
           <div className="min-w-0">
-            <h2 className="font-semibold text-neutral-950">{user.displayName}</h2>
-            <p className="text-sm text-neutral-500">@{user.username}</p>
+            <h2 dir="auto" className="font-semibold text-neutral-950">
+              {user.displayName}
+            </h2>
+            <p dir="ltr" className="text-sm text-neutral-500">
+              @{user.username}
+            </p>
             {user.bio ? (
-              <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
+              <p dir="auto" className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
                 {user.bio}
               </p>
             ) : null}

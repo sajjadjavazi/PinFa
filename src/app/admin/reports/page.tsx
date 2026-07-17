@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ReportActionsPanel } from "@/components/admin/ReportActionsPanel";
 import { requireAdminPageUser } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n/config";
+import { formatLocaleNumber } from "@/lib/i18n/format";
 import { getCurrentLocale } from "@/lib/i18n/get-locale";
 import type { Dictionary } from "@/lib/i18n/t";
 import { getDictionary, t } from "@/lib/i18n/t";
@@ -60,7 +61,9 @@ export default async function AdminReportsPage({
               <dt className="text-neutral-500">
                 {t(dictionary, `enums.reportStatus.${status}`)}
               </dt>
-              <dd className="mt-1 text-2xl font-semibold">{stats[status]}</dd>
+              <dd className="mt-1 text-2xl font-semibold">
+                {formatLocaleNumber(stats[status], locale)}
+              </dd>
             </div>
           ))}
         </dl>
@@ -116,7 +119,7 @@ export default async function AdminReportsPage({
           <h2 className="text-xl font-semibold">{t(dictionary, "admin.reports.reports")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
             {t(dictionary, "admin.reports.showing", {
-              count: reports.items.length,
+              count: formatLocaleNumber(reports.items.length, locale),
             })}
           </p>
         </div>
@@ -173,11 +176,14 @@ function ReportCard({
         </div>
 
         <div>
-          <h3 className="break-all text-lg font-semibold text-neutral-950">
-            {t(dictionary, "admin.reports.report")} #{report.id}
+          <h3 className="text-lg font-semibold text-neutral-950">
+            {t(dictionary, "admin.reports.report")} {" "}
+            <span dir="ltr" className="break-all font-mono text-sm">
+              #{report.id}
+            </span>
           </h3>
           {report.description ? (
-            <p className="mt-2 leading-6 text-neutral-600">
+            <p dir="auto" className="mt-2 leading-6 text-neutral-600">
               {report.description}
             </p>
           ) : (
@@ -196,11 +202,14 @@ function ReportCard({
               {report.reporter.displayName}
             </Link>
             <span className="block text-neutral-500">
-              @{report.reporter.username} - {report.reporter.status}
+              <span dir="ltr">@{report.reporter.username}</span> -{" "}
+              {t(dictionary, `enums.userStatus.${report.reporter.status}`)}
             </span>
           </InfoItem>
           <InfoItem label={t(dictionary, "admin.reports.targetId")}>
-            <span className="break-all">{report.targetId}</span>
+            <span dir="ltr" className="block break-all font-mono text-xs">
+              {report.targetId}
+            </span>
           </InfoItem>
           <InfoItem label={t(dictionary, "admin.reports.created")}>
             {new Date(report.createdAt).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
@@ -209,9 +218,14 @@ function ReportCard({
             {new Date(report.updatedAt).toLocaleString(locale === "fa" ? "fa-IR" : "en-US")}
           </InfoItem>
           <InfoItem label={t(dictionary, "admin.reports.reviewedBy")}>
-            {report.reviewedBy
-              ? `${report.reviewedBy.displayName} (@${report.reviewedBy.username})`
-              : t(dictionary, "admin.reports.notReviewed")}
+            {report.reviewedBy ? (
+              <>
+                {report.reviewedBy.displayName} {" "}
+                <span dir="ltr">(@{report.reviewedBy.username})</span>
+              </>
+            ) : (
+              t(dictionary, "admin.reports.notReviewed")
+            )}
           </InfoItem>
         </dl>
 
@@ -221,7 +235,11 @@ function ReportCard({
           </p>
         ) : null}
 
-        <TargetPreview dictionary={dictionary} target={report.targetPreview} />
+        <TargetPreview
+          dictionary={dictionary}
+          locale={locale}
+          target={report.targetPreview}
+        />
       </div>
 
       <ReportActionsPanel
@@ -236,9 +254,11 @@ function ReportCard({
 
 function TargetPreview({
   dictionary,
+  locale,
   target,
 }: {
   dictionary: Dictionary;
+  locale: Locale;
   target: AdminReportTargetPreview | null;
 }) {
   if (!target) {
@@ -250,21 +270,23 @@ function TargetPreview({
   }
 
   if (target.type === "PIN") {
-    return <PinTargetPreview dictionary={dictionary} pin={target} />;
+    return <PinTargetPreview dictionary={dictionary} locale={locale} pin={target} />;
   }
 
   if (target.type === "USER") {
-    return <UserTargetPreview dictionary={dictionary} user={target} />;
+    return <UserTargetPreview dictionary={dictionary} locale={locale} user={target} />;
   }
 
-  return <BoardTargetPreview board={target} dictionary={dictionary} />;
+  return <BoardTargetPreview board={target} dictionary={dictionary} locale={locale} />;
 }
 
 function PinTargetPreview({
   dictionary,
+  locale,
   pin,
 }: {
   dictionary: Dictionary;
+  locale: Locale;
   pin: Extract<AdminReportTargetPreview, { type: "PIN" }>;
 }) {
   return (
@@ -282,16 +304,21 @@ function PinTargetPreview({
         {pin.publicUrl ? (
           <Link
             href={pin.publicUrl}
+            dir="auto"
             className="font-semibold text-neutral-950 underline-offset-4 hover:underline"
           >
             {pin.title}
           </Link>
         ) : (
-          <p className="font-semibold text-neutral-950">{pin.title}</p>
+          <p dir="auto" className="font-semibold text-neutral-950">
+            {pin.title}
+          </p>
         )}
         <p className="text-sm text-neutral-500">
-          {t(dictionary, "search.byOwner", { owner: pin.owner.displayName })} (@
-          {pin.owner.username}) - {pin.reportCount} {t(dictionary, "admin.reports.reports")}
+          {t(dictionary, "search.byOwner", { owner: pin.owner.displayName })} {" "}
+          <span dir="ltr">(@{pin.owner.username})</span> -{" "}
+          {formatLocaleNumber(pin.reportCount, locale)}{" "}
+          {t(dictionary, "admin.reports.reports")}
         </p>
       </div>
     </section>
@@ -300,9 +327,11 @@ function PinTargetPreview({
 
 function UserTargetPreview({
   dictionary,
+  locale,
   user,
 }: {
   dictionary: Dictionary;
+  locale: Locale;
   user: Extract<AdminReportTargetPreview, { type: "USER" }>;
 }) {
   return (
@@ -314,23 +343,31 @@ function UserTargetPreview({
       />
       <div className="grid content-start gap-2">
         <div className="flex flex-wrap gap-2">
-          <Badge>{user.status}</Badge>
-          <Badge>{user.role}</Badge>
+          <Badge>{t(dictionary, `enums.userStatus.${user.status}`)}</Badge>
+          <Badge>{t(dictionary, `enums.userRole.${user.role}`)}</Badge>
         </div>
         {user.publicUrl ? (
           <Link
             href={user.publicUrl}
+            dir="auto"
             className="font-semibold text-neutral-950 underline-offset-4 hover:underline"
           >
             {user.displayName}
           </Link>
         ) : (
-          <p className="font-semibold text-neutral-950">{user.displayName}</p>
+          <p dir="auto" className="font-semibold text-neutral-950">
+            {user.displayName}
+          </p>
         )}
         <p className="text-sm text-neutral-500">
-          @{user.username} - trust {user.trustScore} - {user.followerCount}{" "}
-          {t(dictionary, "profile.followerCount", { count: user.followerCount })} -{" "}
-          {t(dictionary, "profile.followingCount", { count: user.followingCount })}
+          <span dir="ltr">@{user.username}</span> -{" "}
+          {t(dictionary, "admin.reports.trustScore")}: {formatLocaleNumber(user.trustScore, locale)} -{" "}
+          {t(dictionary, "profile.followerCount", {
+            count: formatLocaleNumber(user.followerCount, locale),
+          })} -{" "}
+          {t(dictionary, "profile.followingCount", {
+            count: formatLocaleNumber(user.followingCount, locale),
+          })}
         </p>
       </div>
     </section>
@@ -340,9 +377,11 @@ function UserTargetPreview({
 function BoardTargetPreview({
   board,
   dictionary,
+  locale,
 }: {
   board: Extract<AdminReportTargetPreview, { type: "BOARD" }>;
   dictionary: Dictionary;
+  locale: Locale;
 }) {
   return (
     <section className="grid gap-4 rounded-md border border-neutral-200 p-3 sm:grid-cols-[160px_minmax(0,1fr)]">
@@ -354,25 +393,38 @@ function BoardTargetPreview({
       <div className="grid content-start gap-2">
         <div className="flex flex-wrap gap-2">
           <Badge>{t(dictionary, `enums.boardVisibility.${board.visibility}`)}</Badge>
-          <Badge>{t(dictionary, "board.pinCount", { count: board.pinCount })}</Badge>
-          <Badge>{t(dictionary, "board.followerCount", { count: board.followerCount })}</Badge>
+          <Badge>
+            {t(dictionary, "board.pinCount", {
+              count: formatLocaleNumber(board.pinCount, locale),
+            })}
+          </Badge>
+          <Badge>
+            {t(dictionary, "board.followerCount", {
+              count: formatLocaleNumber(board.followerCount, locale),
+            })}
+          </Badge>
         </div>
         {board.publicUrl ? (
           <Link
             href={board.publicUrl}
+            dir="auto"
             className="font-semibold text-neutral-950 underline-offset-4 hover:underline"
           >
             {board.title}
           </Link>
         ) : (
-          <p className="font-semibold text-neutral-950">{board.title}</p>
+          <p dir="auto" className="font-semibold text-neutral-950">
+            {board.title}
+          </p>
         )}
         {board.description ? (
-          <p className="text-sm text-neutral-600">{board.description}</p>
+          <p dir="auto" className="text-sm text-neutral-600">
+            {board.description}
+          </p>
         ) : null}
         <p className="text-sm text-neutral-500">
-          {t(dictionary, "search.byOwner", { owner: board.owner.displayName })} (@
-          {board.owner.username})
+          {t(dictionary, "search.byOwner", { owner: board.owner.displayName })} {" "}
+          <span dir="ltr">(@{board.owner.username})</span>
         </p>
       </div>
     </section>
@@ -502,6 +554,10 @@ function formatAdminOptionLabel(
 
   if (name === "targetType") {
     return t(dictionary, `enums.targetType.${value}`);
+  }
+
+  if (name === "order") {
+    return t(dictionary, `admin.reports.filters.${value}`);
   }
 
   return value

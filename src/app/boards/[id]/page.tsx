@@ -198,7 +198,7 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
         {coverUrl ? (
           <img
             src={coverUrl}
-            alt={`${board.title} cover`}
+            alt={t(dictionary, "board.coverAlt", { title: board.title })}
             width={board.coverPin?.width ?? undefined}
             height={board.coverPin?.height ?? undefined}
             loading="eager"
@@ -216,11 +216,11 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
             <p className="text-sm text-neutral-500">
               {t(dictionary, `enums.boardVisibility.${board.visibility}`)}
             </p>
-            <h1 className="mt-2 text-4xl font-semibold text-neutral-950">
+            <h1 dir="auto" className="mt-2 text-4xl font-semibold text-neutral-950">
               {board.title}
             </h1>
             {board.description ? (
-              <p className="mt-4 max-w-2xl leading-7 text-neutral-600">
+              <p dir="auto" className="mt-4 max-w-2xl leading-7 text-neutral-600">
                 {board.description}
               </p>
             ) : null}
@@ -246,7 +246,9 @@ export default async function BoardDetailPage({ params }: BoardDetailPageProps) 
               >
                 {board.owner.displayName}
               </Link>
-              <p className="text-sm text-neutral-500">@{board.owner.username}</p>
+              <p dir="ltr" className="text-sm text-neutral-500">
+                @{board.owner.username}
+              </p>
             </div>
           </div>
 

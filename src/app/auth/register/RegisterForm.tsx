@@ -75,6 +75,7 @@ export function RegisterForm({ locale }: { locale: Locale }) {
           id="displayName"
           name="displayName"
           autoComplete="name"
+          dir="auto"
           required
           minLength={2}
           maxLength={80}

@@ -7,6 +7,11 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { PinSocialActions } from "@/components/social/PinSocialActions";
 import { canAccessAdmin } from "@/lib/admin";
 import { getCurrentUser } from "@/lib/auth";
+import {
+  formatFileSize,
+  formatImageDimensions,
+  formatLocaleNumber,
+} from "@/lib/i18n/format";
 import { getCurrentLocale } from "@/lib/i18n/get-locale";
 import { getDictionary, t } from "@/lib/i18n/t";
 import { applyCategoryInterestSignal } from "@/lib/interest-signals";
@@ -240,11 +245,13 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
           <p className="text-sm text-neutral-500">
             {pin.category?.name ?? t(dictionary, "common.uncategorized")}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-neutral-950">
+          <h1 dir="auto" className="mt-2 text-3xl font-semibold text-neutral-950">
             {pin.title}
           </h1>
           {pin.description ? (
-            <p className="mt-4 leading-7 text-neutral-600">{pin.description}</p>
+            <p dir="auto" className="mt-4 leading-7 text-neutral-600">
+              {pin.description}
+            </p>
           ) : null}
         </section>
 
@@ -261,7 +268,9 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
             >
               {pin.owner.displayName}
             </Link>
-            <p className="text-sm text-neutral-500">@{pin.owner.username}</p>
+            <p dir="ltr" className="text-sm text-neutral-500">
+              @{pin.owner.username}
+            </p>
           </div>
         </section>
 
@@ -303,32 +312,52 @@ export default async function PinDetailPage({ params }: PinDetailPageProps) {
           </div>
           <div>
             <dt className="font-medium text-neutral-950">{t(dictionary, "pin.fileType")}</dt>
-            <dd className="mt-1 text-neutral-600">
+            <dd dir="ltr" className="mt-1 text-neutral-600">
               {pin.imageAsset?.mimeType ?? t(dictionary, "common.unknown")}
             </dd>
           </div>
           <div>
-            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.imageAsset")}</dt>
-            <dd className="mt-1 text-neutral-600">
-              {pin.imageAsset?.status ?? t(dictionary, "common.unknown")}
+            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.fileSize")}</dt>
+            <dd dir="ltr" className="mt-1 text-neutral-600">
+              {pin.imageAsset
+                ? formatFileSize(pin.imageAsset.originalSizeBytes, locale)
+                : t(dictionary, "common.unknown")}
             </dd>
           </div>
           <div>
             <dt className="font-medium text-neutral-950">{t(dictionary, "pin.dimensions")}</dt>
-            <dd className="mt-1 text-neutral-600">
+            <dd dir="ltr" className="mt-1 text-neutral-600">
               {pin.width && pin.height
-                ? `${pin.width} x ${pin.height}`
+                ? formatImageDimensions(pin.width, pin.height, locale)
                 : t(dictionary, "pin.pending")}
             </dd>
           </div>
+          {isOwner || isAdmin ? (
+            <div>
+              <dt className="font-medium text-neutral-950">
+                {t(dictionary, "pin.imageAsset")}
+              </dt>
+              <dd className="mt-1 text-neutral-600">
+                {pin.imageAsset
+                  ? t(dictionary, `enums.imageStatus.${pin.imageAsset.status}`)
+                  : t(dictionary, "common.unknown")}
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt className="font-medium text-neutral-950">{t(dictionary, "pin.saves")}</dt>
-            <dd className="mt-1 text-neutral-600">{pin.saveCount}</dd>
+            <dd className="mt-1 text-neutral-600">
+              {formatLocaleNumber(pin.saveCount, locale)}
+            </dd>
           </div>
-          <div>
-            <dt className="font-medium text-neutral-950">{t(dictionary, "pin.reports")}</dt>
-            <dd className="mt-1 text-neutral-600">{pin.reportCount}</dd>
-          </div>
+          {isOwner || isAdmin ? (
+            <div>
+              <dt className="font-medium text-neutral-950">{t(dictionary, "pin.reports")}</dt>
+              <dd className="mt-1 text-neutral-600">
+                {formatLocaleNumber(pin.reportCount, locale)}
+              </dd>
+            </div>
+          ) : null}
         </dl>
       </aside>
     </main>

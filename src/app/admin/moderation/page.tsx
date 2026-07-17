@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ModerationActionPanel } from "@/components/admin/ModerationActionButton";
 import { requireAdminPageUser } from "@/lib/admin";
 import type { Locale } from "@/lib/i18n/config";
+import {
+  formatImageDimensions,
+  formatLocaleNumber,
+} from "@/lib/i18n/format";
 import { getCurrentLocale } from "@/lib/i18n/get-locale";
 import type { Dictionary } from "@/lib/i18n/t";
 import { getDictionary, t } from "@/lib/i18n/t";
@@ -49,11 +53,15 @@ export default async function AdminModerationPage({
         <dl className="grid grid-cols-2 gap-3 text-sm sm:min-w-72">
           <div className="rounded-md bg-white px-4 py-3 shadow-sm ring-1 ring-neutral-200">
             <dt className="text-neutral-500">{t(dictionary, "admin.moderation.pending")}</dt>
-            <dd className="mt-1 text-2xl font-semibold">{pendingPins.length}</dd>
+            <dd className="mt-1 text-2xl font-semibold">
+              {formatLocaleNumber(pendingPins.length, locale)}
+            </dd>
           </div>
           <div className="rounded-md bg-white px-4 py-3 shadow-sm ring-1 ring-neutral-200">
             <dt className="text-neutral-500">{t(dictionary, "admin.moderation.published")}</dt>
-            <dd className="mt-1 text-2xl font-semibold">{publishedPins.length}</dd>
+            <dd className="mt-1 text-2xl font-semibold">
+              {formatLocaleNumber(publishedPins.length, locale)}
+            </dd>
           </div>
         </dl>
       </section>
@@ -172,11 +180,11 @@ function ModerationPinCard({
               </span>
             ) : null}
           </div>
-          <h3 className="mt-3 text-lg font-semibold text-neutral-950">
+          <h3 dir="auto" className="mt-3 text-lg font-semibold text-neutral-950">
             {pin.title}
           </h3>
           {pin.description ? (
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
+            <p dir="auto" className="mt-2 line-clamp-2 text-sm leading-6 text-neutral-600">
               {pin.description}
             </p>
           ) : null}
@@ -184,7 +192,9 @@ function ModerationPinCard({
 
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <InfoItem label={t(dictionary, "admin.moderation.pinId")}>
-            <span className="break-all font-mono text-xs">{pin.id}</span>
+            <span dir="ltr" className="block break-all font-mono text-xs">
+              {pin.id}
+            </span>
           </InfoItem>
           <InfoItem label={t(dictionary, "admin.moderation.created")}>
             {formatDate(pin.createdAt, locale)}
@@ -196,7 +206,9 @@ function ModerationPinCard({
             >
               {pin.owner.displayName}
             </Link>
-            <span className="block text-neutral-500">@{pin.owner.username}</span>
+            <span dir="ltr" className="block text-neutral-500">
+              @{pin.owner.username}
+            </span>
           </InfoItem>
           <InfoItem label={t(dictionary, "admin.moderation.category")}>
             {pin.category?.name ?? t(dictionary, "common.uncategorized")}
@@ -204,9 +216,15 @@ function ModerationPinCard({
           <InfoItem label={t(dictionary, "admin.moderation.currentStatus")}>
             {t(dictionary, `enums.pinStatus.${pin.status}`)}
           </InfoItem>
-          <InfoItem label={t(dictionary, "admin.moderation.reports")}>{pin.reportCount}</InfoItem>
-          <InfoItem label={t(dictionary, "admin.moderation.size")}>
-            {pin.width && pin.height ? `${pin.width} x ${pin.height}` : t(dictionary, "common.unknown")}
+          <InfoItem label={t(dictionary, "admin.moderation.reports")}>
+            {formatLocaleNumber(pin.reportCount, locale)}
+          </InfoItem>
+          <InfoItem label={t(dictionary, "admin.moderation.imageSize")}>
+            <span dir="ltr">
+              {pin.width && pin.height
+                ? formatImageDimensions(pin.width, pin.height, locale)
+                : t(dictionary, "common.unknown")}
+            </span>
           </InfoItem>
         </dl>
 
@@ -216,17 +234,31 @@ function ModerationPinCard({
           </p>
           {moderationResult ? (
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
-              <LikelihoodValue label="Adult" value={moderationResult.adultLikelihood} />
-              <LikelihoodValue label="Racy" value={moderationResult.racyLikelihood} />
               <LikelihoodValue
-                label="Violence"
+                displayValue={t(dictionary, `enums.likelihood.${moderationResult.adultLikelihood}`)}
+                label={t(dictionary, "admin.moderation.adult")}
+                value={moderationResult.adultLikelihood}
+              />
+              <LikelihoodValue
+                displayValue={t(dictionary, `enums.likelihood.${moderationResult.racyLikelihood}`)}
+                label={t(dictionary, "admin.moderation.racy")}
+                value={moderationResult.racyLikelihood}
+              />
+              <LikelihoodValue
+                displayValue={t(dictionary, `enums.likelihood.${moderationResult.violenceLikelihood}`)}
+                label={t(dictionary, "admin.moderation.violence")}
                 value={moderationResult.violenceLikelihood}
               />
               <LikelihoodValue
-                label="Medical"
+                displayValue={t(dictionary, `enums.likelihood.${moderationResult.medicalLikelihood}`)}
+                label={t(dictionary, "admin.moderation.medical")}
                 value={moderationResult.medicalLikelihood}
               />
-              <LikelihoodValue label="Spoof" value={moderationResult.spoofLikelihood} />
+              <LikelihoodValue
+                displayValue={t(dictionary, `enums.likelihood.${moderationResult.spoofLikelihood}`)}
+                label={t(dictionary, "admin.moderation.spoof")}
+                value={moderationResult.spoofLikelihood}
+              />
             </div>
           ) : (
             <p className="mt-2 text-sm text-neutral-500">
@@ -235,7 +267,7 @@ function ModerationPinCard({
           )}
           {moderationResult ? (
             <p className="mt-2 text-xs text-neutral-500">
-              {moderationResult.provider} -{" "}
+              <span dir="ltr">{moderationResult.provider}</span> -{" "}
               {t(dictionary, `enums.moderationDecision.${moderationResult.decision}`)}
               {moderationResult.reviewedBy ? (
                 <>
@@ -271,11 +303,19 @@ function InfoItem({
   );
 }
 
-function LikelihoodValue({ label, value }: { label: string; value: string }) {
+function LikelihoodValue({
+  displayValue,
+  label,
+  value,
+}: {
+  displayValue: string;
+  label: string;
+  value: string;
+}) {
   return (
     <div className={`rounded-md px-2 py-2 ${likelihoodClasses(value)}`}>
       <span className="block font-medium">{label}</span>
-      <span className="mt-1 block break-words">{value}</span>
+      <span className="mt-1 block break-words">{displayValue}</span>
     </div>
   );
 }

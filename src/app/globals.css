@@ -1,20 +1,21 @@
 @import "tailwindcss";
-@import "@fontsource/vazirmatn/400.css";
-@import "@fontsource/vazirmatn/500.css";
-@import "@fontsource/vazirmatn/600.css";
+@import "@fontsource/vazirmatn/arabic-400.css";
+@import "@fontsource/vazirmatn/arabic-500.css";
+@import "@fontsource/vazirmatn/arabic-600.css";
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
   --font-latin: Arial, Helvetica, system-ui, sans-serif;
-  --font-persian: Vazirmatn, system-ui, sans-serif;
+  --font-bilingual: Vazirmatn, Arial, Helvetica, system-ui, sans-serif;
+  --font-persian: Vazirmatn, Arial, Helvetica, system-ui, sans-serif;
 }
 
 body {
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-latin);
+  font-family: var(--font-bilingual);
   font-weight: 400;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

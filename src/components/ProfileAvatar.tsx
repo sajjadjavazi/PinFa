@@ -15,7 +15,7 @@ export function ProfileAvatar({
     return (
       <img
         src={avatarUrl}
-        alt={`${displayName} avatar`}
+        alt={displayName}
         loading="lazy"
         decoding="async"
         className={`${dimensions} rounded-full object-cover`}

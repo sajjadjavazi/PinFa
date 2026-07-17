@@ -40,13 +40,15 @@ html[dir="rtl"] body {
 }
 ```
 
-The font is provided through `@fontsource/vazirmatn` and imported in `src/app/globals.css` at weights 400, 500, and 600. These cover normal body text plus medium and semibold UI labels/headings without making the default UI feel heavy.
+The font is provided through `@fontsource/vazirmatn` and imported in `src/app/globals.css` at weights 400, 500, and 600. Only the package's Arabic/Persian Unicode subsets are loaded. These cover normal body text plus medium and semibold UI labels/headings without making the default UI feel heavy.
 
-English/LTR UI keeps the Latin-friendly stack:
+English/LTR UI keeps the Latin-friendly stack for Latin characters while Vazirmatn remains the script-specific fallback for Persian/Arabic characters:
 
 ```css
-Arial, Helvetica, system-ui, sans-serif
+Vazirmatn, Arial, Helvetica, system-ui, sans-serif
 ```
+
+Because the loaded Vazirmatn faces are restricted to Persian/Arabic Unicode ranges, English text falls through to Arial/Helvetica while Persian user-generated content still uses Vazirmatn even when the selected UI locale is English.
 
 Technical/LTR fields such as email, phone, password, URL, code, and explicitly `dir="ltr"` values can keep the Latin stack even inside Persian pages.
 

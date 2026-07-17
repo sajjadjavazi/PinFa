@@ -69,16 +69,16 @@ function NativeAdCardComponent({ ad, locale }: NativeAdCardProps) {
           <span className="w-fit rounded-sm bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-500">
             {t(dictionary, "ads.label")}
           </span>
-          <h2 className="line-clamp-2 text-[13px] font-semibold leading-5 text-neutral-950 group-hover:underline">
+          <h2 dir="auto" className="line-clamp-2 text-[13px] font-semibold leading-5 text-neutral-950 group-hover:underline">
             {ad.title}
           </h2>
           {ad.body ? (
-            <p className="line-clamp-2 text-[11px] leading-4 text-neutral-600">
+            <p dir="auto" className="line-clamp-2 text-[11px] leading-4 text-neutral-600">
               {ad.body}
             </p>
           ) : null}
           {ad.callToAction ? (
-            <p className="text-[11px] font-semibold text-neutral-950">
+            <p dir="auto" className="text-[11px] font-semibold text-neutral-950">
               {ad.callToAction}
             </p>
           ) : null}

@@ -226,17 +226,20 @@ function FeedPinCardComponent({
         {pin.title ? (
           <Link
             href={`/pins/${pin.id}`}
+            dir="auto"
             className="line-clamp-2 text-[13px] font-semibold leading-5 text-neutral-950 underline-offset-4 hover:underline"
           >
             {pin.title}
           </Link>
         ) : null}
-        <p className="line-clamp-1 text-[11px] text-neutral-500">
+        <p dir="auto" className="line-clamp-1 text-[11px] text-neutral-500">
           {pin.owner.displayName}
           {pin.category?.name ? ` - ${pin.category.name}` : ""}
         </p>
         {message ? (
-          <p className="line-clamp-2 text-[11px] text-neutral-600">{message}</p>
+          <p dir="auto" className="line-clamp-2 text-[11px] text-neutral-600">
+            {message}
+          </p>
         ) : null}
       </div>
     </article>
